@@ -63,7 +63,8 @@
   .steps{margin-top:4px;color:#374151;font-size:13px;font-weight:400}
   .steps div{margin:1px 0}
   .empty{color:#9aa1ad;text-align:center;padding:80px 0;font-size:15px}
-  .frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:-0.45em;margin:0 2px;line-height:1.05}
+  .frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:middle;margin:0 2px;line-height:1.05}
+  .mexp{display:inline-flex;align-items:center;gap:.2em;flex-wrap:wrap;vertical-align:middle}
   .frac .n{border-bottom:1.4px solid currentColor;padding:0 3px}
   .frac .d{padding:0 3px}
   /* ---------- 手機收合抽屜 (RWD) ---------- */
@@ -245,13 +246,13 @@ const GEN = {
     const op=pick(['+','−']);const L=lcm(d1,d2);let num=op==='+'?n1*(L/d1)+n2*(L/d2):n1*(L/d1)-n2*(L/d2);
     if(op==='−'&&num<0)return GEN.fracAddSub(d);
     const left=n1*(L/d1), right=n2*(L/d2);
-    return{q:`${fracHTML(n1,d1)} ${op} ${fracHTML(n2,d2)} =`,a:fracStr(num,L),steps:[`先通分，公分母是 ${L}`,`${fracHTML(n1,d1)} = ${fracHTML(left,L)}，${fracHTML(n2,d2)} = ${fracHTML(right,L)}`,`${fracHTML(left,L)} ${op} ${fracHTML(right,L)} = ${fracHTML(num,L)} = ${fracStr(num,L)}`]};},
+    return{q:`<span class="mexp">${fracHTML(n1,d1)} ${op} ${fracHTML(n2,d2)} =</span>`,a:fracStr(num,L),steps:[`先通分，公分母是 ${L}`,`${fracHTML(n1,d1)} = ${fracHTML(left,L)}，${fracHTML(n2,d2)} = ${fracHTML(right,L)}`,`${fracHTML(left,L)} ${op} ${fracHTML(right,L)} = ${fracHTML(num,L)} = ${fracStr(num,L)}`]};},
   // ---- 分數乘法 ----
   fracMul:(d)=>{const n1=rnd(1,4+d),d1=rnd(n1+1,6+d),n2=rnd(1,4+d),d2=rnd(n2+1,6+d);
-    return{q:`${fracHTML(n1,d1)} × ${fracHTML(n2,d2)} =`,a:fracStr(n1*n2,d1*d2),steps:[`分子乘分子、分母乘分母`,`${fracHTML(n1,d1)} × ${fracHTML(n2,d2)} = ${fracHTML(n1*n2,d1*d2)} = ${fracStr(n1*n2,d1*d2)}`]};},
+    return{q:`<span class="mexp">${fracHTML(n1,d1)} × ${fracHTML(n2,d2)} =</span>`,a:fracStr(n1*n2,d1*d2),steps:[`分子乘分子、分母乘分母`,`${fracHTML(n1,d1)} × ${fracHTML(n2,d2)} = ${fracHTML(n1*n2,d1*d2)} = ${fracStr(n1*n2,d1*d2)}`]};},
   // ---- 分數除法 ----
   fracDiv:(d)=>{const n1=rnd(1,4+d),d1=rnd(n1+1,6+d),n2=rnd(1,4+d),d2=rnd(n2+1,6+d);
-    return{q:`${fracHTML(n1,d1)} ÷ ${fracHTML(n2,d2)} =`,a:fracStr(n1*d2,d1*n2),steps:[`除以分數等於乘以倒數`,`${fracHTML(n1,d1)} ÷ ${fracHTML(n2,d2)} = ${fracHTML(n1,d1)} × ${fracHTML(d2,n2)}`,`${fracHTML(n1*d2,d1*n2)} = ${fracStr(n1*d2,d1*n2)}`]};},
+    return{q:`<span class="mexp">${fracHTML(n1,d1)} ÷ ${fracHTML(n2,d2)} =</span>`,a:fracStr(n1*d2,d1*n2),steps:[`除以分數等於乘以倒數`,`${fracHTML(n1,d1)} ÷ ${fracHTML(n2,d2)} = ${fracHTML(n1,d1)} × ${fracHTML(d2,n2)}`,`${fracHTML(n1*d2,d1*n2)} = ${fracStr(n1*d2,d1*n2)}`]};},
   // ---- 小數乘法 ----
   decMul:(d)=>{const a=(rnd(11,40*d)/10).toFixed(1),b=(rnd(11,30*d)/10).toFixed(1);
     const ans=(a*b).toFixed(2);
