@@ -250,31 +250,89 @@ const GEN = {
 };
 
 /* =========================================================================
-   3) 課綱資料  學制 -> 年級 -> 學期 -> 單元[{id,name,gen}]
-      gen 為 null 表示尚無自動生成器（靠手動題庫）
+   3) 課綱資料
+      國小：學制 -> 版本 -> 年級 -> 學期 -> 單元[{id,name,gen}]
+      其他學制暫保留 data 結構；gen 為 null 表示尚無自動生成器（靠手動題庫）
    ========================================================================= */
-const U=(id,name,gen)=>({id,name,gen:gen||null});
+const GEN_BY_TOPIC = [
+  {gen:'fracAddSub', keys:['異分母','分數加減','分數的加減','分數加法','分數減法']},
+  {gen:'fracMul', keys:['分數乘法','分數的乘法']},
+  {gen:'fracDiv', keys:['分數除法','分數的除法']},
+  {gen:'decMul', keys:['小數乘法','小數的乘法']},
+  {gen:'decDiv', keys:['小數除法','小數的除法']},
+  {gen:'lcm', keys:['公倍數','最小公倍數','倍數']},
+  {gen:'gcd', keys:['公因數','最大公因數']},
+  {gen:'factors', keys:['因數']},
+  {gen:'intMixed', keys:['整數四則','整數的四則','分數與小數的四則','小數與分數的四則']},
+  {gen:'percent', keys:['比率','百分率','百分數','基準量','比較量']},
+  {gen:'ratio', keys:['比和比值','比與比值','比、比值','正比']},
+  {gen:'cuboid', keys:['體積','表面積','長方體','正方體','柱體體積','柱體表面積','柱體的體積','柱體的表面積']},
+  {gen:'area', keys:['面積','平行四邊形','三角形','梯形']},
+  {gen:'circleP', keys:['圓周長','圓周率']},
+  {gen:'circleA', keys:['圓面積','圓的面積']},
+  {gen:'speed', keys:['速率']},
+  {gen:'equation', keys:['等量公理','列式','數量關係','未知數']},
+  {gen:'time', keys:['時間']},
+  {gen:'unit', keys:['大單位','單位換算','公尺','公里','公噸']}
+];
+const genForTopic = name => name.includes('扇形')
+  ? null
+  : (GEN_BY_TOPIC.find(rule=>rule.keys.some(k=>name.includes(k)))||{}).gen || null;
+const U=(id,name,gen)=>({id,name,gen:gen===undefined?genForTopic(name):(gen||null)});
+const makeUnits=(ver,gr,sem,names)=>names.map((name,i)=>U(`${ver}_${gr}_${sem}_${String(i+1).padStart(2,'0')}`,name));
+const ELEMENTARY_VERSIONS = {
+  "通用":{
+    "5":{
+      "上":['小數與分數','因數與倍數','平面圖形','整數四則計算','異分母分數加減','線對稱圖形','面積','正方體與長方體','統計圖'],
+      "下":['分數乘法','體積','容積','小數乘法與估算','時間的計算','表面積','比率與百分率','怎樣解題','生活中的大單位']
+    },
+    "6":{
+      "上":['最大公因數與最小公倍數','分數除法','柱體與錐體','小數除法','數量關係','比、比值與正比','圓周長','圓面積','縮圖、放大圖與比例尺','圓形圖'],
+      "下":['分數與小數的四則','速率','列式與等量公理','柱體體積','怎樣解題','簡化問題','柱體表面積']
+    }
+  },
+  "康軒":{
+    "5":{
+      "上":['多位小數與加減','因數與公因數','倍數與公倍數','擴分、約分和通分','多邊形與扇形','異分母分數的加減','線對稱圖形','整數四則運算','面積','柱體、錐體和球'],
+      "下":['體積','分數的計算','容積','小數的乘法','十進位結構','整數、小數除以整數','表面積','比率與百分率','時間的乘除','生活中的大單位']
+    },
+    "6":{
+      "上":['最大公因數與最小公倍數','分數除法','數量關係','小數除法','比與比值','圓周率與圓周長','圓面積','速率','縮圖、放大圖與比例尺'],
+      "下":['小數與分數的計算','速率的應用','柱體體積與表面積','基準量與比較量','怎樣解題','圓形圖']
+    }
+  },
+  "南一":{
+    "5":{
+      "上":['長條圖和折線圖','因數和倍數','多邊形','擴分、約分和通分','線對稱圖形','異分母分數的加減','整數四則計算','平行四邊形、三角形和梯形的面積','時間的乘除','正方體和長方體'],
+      "下":['分數的計算','數的十進位結構','小數的乘法','扇形','體積','整數、小數除以整數','生活中的大單位','比率和百分率','容積和容量','柱體、錐體和球體']
+    },
+    "6":{
+      "上":['質因數分解和短除法','分數的除法','小數的除法','圓周長和圓面積','比和比值','扇形的弧長和面積','速率','數量關係'],
+      "下":['四則混合運算','柱體的體積和表面積','基準量和比較量','放大圖、縮圖和比例尺','怎樣解題','圓形圖']
+    }
+  },
+  "翰林":{
+    "5":{
+      "上":['折線圖','倍數與因數','平面圖形','公倍數與公因數','立體形體','四則運算','擴、約分與加減','面積','乘以幾分之一','扇形'],
+      "下":['數的十進位結構','分數的計算','長方體與正方體的體積','小數','生活中的大單位','時間的乘除','容積','比率與百分率','表面積','線對稱圖形']
+    },
+    "6":{
+      "上":['最大公因數與最小公倍數','分數除法','規律問題','比與比值','小數除法','兩量關係與比','圓周長與扇形周長','放大、縮小與比例尺','怎樣解題'],
+      "下":['分數與小數的四則運算','圓面積與扇形面積','速率','統計圖表','怎樣解題','角柱與圓柱']
+    }
+  }
+};
+const elementaryVersions = Object.fromEntries(Object.entries(ELEMENTARY_VERSIONS).map(([ver,grades])=>[
+  ver,
+  {data:Object.fromEntries(Object.entries(grades).map(([gr,sems])=>[
+    gr,
+    Object.fromEntries(Object.entries(sems).map(([sem,names])=>[sem,makeUnits(ver,gr,sem,names)]))
+  ]))}
+]));
 const CUR = {
   "國小":{
     grades:["5","6"],
-    data:{
-      "5":{
-        "上":[U('g5s1_decfrac','小數與分數',null),U('g5s1_factor','因數與倍數','gcd'),U('g5s1_factors','求因數','factors'),
-              U('g5s1_plane','平面圖形',null),U('g5s1_int4','整數四則計算','intMixed'),U('g5s1_fracas','異分母分數加減','fracAddSub'),
-              U('g5s1_sym','線對稱圖形',null),U('g5s1_area','面積（平行四邊形/三角形/梯形）','area'),
-              U('g5s1_cuboid','正方體與長方體','cuboid'),U('g5s1_stat','統計圖',null)],
-        "下":[U('g5s2_fmul','分數乘法','fracMul'),U('g5s2_vol','體積','cuboid'),U('g5s2_cap','容積',null),
-              U('g5s2_dmul','小數乘法與估算','decMul'),U('g5s2_time','時間的計算','time'),U('g5s2_surf','表面積','cuboid'),
-              U('g5s2_pct','比率與百分率','percent'),U('g5s2_solve','怎樣解題',null),U('g5s2_unit','生活中的大單位','unit')]
-      },
-      "6":{
-        "上":[U('g6s1_gcdlcm','最大公因數與最小公倍數','lcm'),U('g6s1_fdiv','分數除法','fracDiv'),U('g6s1_solid','柱體與錐體',null),
-              U('g6s1_ddiv','小數除法','decDiv'),U('g6s1_rel','數量關係','equation'),U('g6s1_ratio','比、比值、正比','ratio'),
-              U('g6s1_cir_p','圓周長','circleP'),U('g6s1_cir_a','圓面積','circleA'),U('g6s1_scale','縮圖放大圖比例尺',null),U('g6s1_pie','圓形圖',null)],
-        "下":[U('g6s2_fd4','分數與小數的四則','intMixed'),U('g6s2_speed','速率','speed'),U('g6s2_eq','列式與等量公理','equation'),
-              U('g6s2_pvol','柱體體積','cuboid'),U('g6s2_solve','怎樣解題',null),U('g6s2_simp','簡化問題',null),U('g6s2_psurf','柱體表面積','cuboid')]
-      }
-    }
+    versions:elementaryVersions
   },
   // —— 擴展預留：之後填入單元即可，程式不用改 ——
   "國中":{grades:["7","8","9"],data:{"7":{"上":[],"下":[]},"8":{"上":[],"下":[]},"9":{"上":[],"下":[]}}},
@@ -302,8 +360,13 @@ function fillGrades(){
 $('#semSel').innerHTML='<option value="上">上學期</option><option value="下">下學期</option>';
 
 function curUnits(){
-  const gr=$('#gradeSel').value, sem=$('#semSel').value;
-  return (CUR[stage].data[gr] && CUR[stage].data[gr][sem]) || [];
+  const gr=$('#gradeSel').value, sem=$('#semSel').value, ver=$('#versionSel').value;
+  const stageData=CUR[stage];
+  if(stageData.versions){
+    const versionData=stageData.versions[ver] || stageData.versions["通用"];
+    return (versionData.data[gr] && versionData.data[gr][sem]) || [];
+  }
+  return (stageData.data[gr] && stageData.data[gr][sem]) || [];
 }
 function fillUnits(){
   const list=$('#unitList'); list.innerHTML='';
