@@ -59,6 +59,8 @@
   .q .body{flex:1}
   .q .ans-line{display:inline-block;border-bottom:1px solid #888;min-width:70px}
   .answers .q .body{color:#b91c1c;font-weight:600}
+  .steps{margin-top:4px;color:#374151;font-size:13px;font-weight:400}
+  .steps div{margin:1px 0}
   .empty{color:#9aa1ad;text-align:center;padding:80px 0;font-size:15px}
   .frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:-0.45em;margin:0 2px;line-height:1.05}
   .frac .n{border-bottom:1.4px solid currentColor;padding:0 3px}
@@ -124,6 +126,7 @@
     <div class="group">
       <label>考卷設定</label>
       <input type="text" id="titleInput" placeholder="考卷標題" value="數學課前測驗">
+      <label class="toggle" style="margin-top:10px"><input type="checkbox" id="stepsToggle"> 顯示詳解步驟</label>
       <div class="row" style="margin-top:8px">
         <div><label class="hint">每列題數</label><input type="number" id="colsInput" value="2" min="1" max="4"></div>
       </div>
@@ -195,58 +198,65 @@ function fracHTML(n,d){
    ========================================================================= */
 const GEN = {
   // ---- 因數倍數 ----
-  factors:(d)=>{const n=rnd(d*8,d*18+10);return{q:`求 ${n} 的所有因數：`,a:Array.from({length:n},(_, i)=>i+1).filter(x=>n%x===0).join('、')};},
-  gcd:(d)=>{const a=rnd(6,12*d),b=rnd(6,12*d);return{q:`(${a}, ${b}) 的最大公因數 =`,a:''+gcd(a,b)};},
-  lcm:(d)=>{const a=rnd(3,6*d),b=rnd(3,6*d);return{q:`[${a}, ${b}] 的最小公倍數 =`,a:''+lcm(a,b)};},
+  factors:(d)=>{const n=rnd(d*8,d*18+10);const fs=Array.from({length:n},(_, i)=>i+1).filter(x=>n%x===0);
+    return{q:`求 ${n} 的所有因數：`,a:fs.join('、'),steps:[`${n} 可以被這些數整除：${fs.join('、')}`]};},
+  gcd:(d)=>{const a=rnd(6,12*d),b=rnd(6,12*d);const ans=gcd(a,b);
+    return{q:`(${a}, ${b}) 的最大公因數 =`,a:''+ans,steps:[`${a} 的因數：${Array.from({length:a},(_,i)=>i+1).filter(x=>a%x===0).join('、')}`,`${b} 的因數：${Array.from({length:b},(_,i)=>i+1).filter(x=>b%x===0).join('、')}`,`共同因數中最大的是 ${ans}`]};},
+  lcm:(d)=>{const a=rnd(3,6*d),b=rnd(3,6*d);const ans=lcm(a,b);
+    return{q:`[${a}, ${b}] 的最小公倍數 =`,a:''+ans,steps:[`最大公因數 = ${gcd(a,b)}`,`最小公倍數 = ${a} × ${b} ÷ 最大公因數 ${gcd(a,b)} = ${ans}`]};},
   // ---- 整數四則 ----
   intMixed:(d)=>{const a=rnd(10,30*d),b=rnd(2,9),c=rnd(10,40*d),e=rnd(2,9);
-    return{q:`(${a} + ${b}) × ${e} − ${c} =`,a:''+((a+b)*e-c)};},
+    const sum=a+b, mul=sum*e, ans=mul-c;
+    return{q:`(${a} + ${b}) × ${e} − ${c} =`,a:''+ans,steps:[`先算括號：${a} + ${b} = ${sum}`,`再乘：${sum} × ${e} = ${mul}`,`最後相減：${mul} − ${c} = ${ans}`]};},
   // ---- 異分母分數加減 ----
   fracAddSub:(d)=>{const d1=rnd(2,5+d),d2=rnd(2,5+d);const n1=rnd(1,d1-1),n2=rnd(1,d2-1);
     const op=pick(['+','−']);const L=lcm(d1,d2);let num=op==='+'?n1*(L/d1)+n2*(L/d2):n1*(L/d1)-n2*(L/d2);
     if(op==='−'&&num<0)return GEN.fracAddSub(d);
-    return{q:`${fracHTML(n1,d1)} ${op} ${fracHTML(n2,d2)} =`,a:fracStr(num,L)};},
+    const left=n1*(L/d1), right=n2*(L/d2);
+    return{q:`${fracHTML(n1,d1)} ${op} ${fracHTML(n2,d2)} =`,a:fracStr(num,L),steps:[`先通分，公分母是 ${L}`,`${fracHTML(n1,d1)} = ${fracHTML(left,L)}，${fracHTML(n2,d2)} = ${fracHTML(right,L)}`,`${fracHTML(left,L)} ${op} ${fracHTML(right,L)} = ${fracHTML(num,L)} = ${fracStr(num,L)}`]};},
   // ---- 分數乘法 ----
   fracMul:(d)=>{const n1=rnd(1,4+d),d1=rnd(n1+1,6+d),n2=rnd(1,4+d),d2=rnd(n2+1,6+d);
-    return{q:`${fracHTML(n1,d1)} × ${fracHTML(n2,d2)} =`,a:fracStr(n1*n2,d1*d2)};},
+    return{q:`${fracHTML(n1,d1)} × ${fracHTML(n2,d2)} =`,a:fracStr(n1*n2,d1*d2),steps:[`分子乘分子、分母乘分母`,`${fracHTML(n1,d1)} × ${fracHTML(n2,d2)} = ${fracHTML(n1*n2,d1*d2)} = ${fracStr(n1*n2,d1*d2)}`]};},
   // ---- 分數除法 ----
   fracDiv:(d)=>{const n1=rnd(1,4+d),d1=rnd(n1+1,6+d),n2=rnd(1,4+d),d2=rnd(n2+1,6+d);
-    return{q:`${fracHTML(n1,d1)} ÷ ${fracHTML(n2,d2)} =`,a:fracStr(n1*d2,d1*n2)};},
+    return{q:`${fracHTML(n1,d1)} ÷ ${fracHTML(n2,d2)} =`,a:fracStr(n1*d2,d1*n2),steps:[`除以分數等於乘以倒數`,`${fracHTML(n1,d1)} ÷ ${fracHTML(n2,d2)} = ${fracHTML(n1,d1)} × ${fracHTML(d2,n2)}`,`${fracHTML(n1*d2,d1*n2)} = ${fracStr(n1*d2,d1*n2)}`]};},
   // ---- 小數乘法 ----
   decMul:(d)=>{const a=(rnd(11,40*d)/10).toFixed(1),b=(rnd(11,30*d)/10).toFixed(1);
-    return{q:`${a} × ${b} =`,a:(a*b).toFixed(2)};},
+    const ans=(a*b).toFixed(2);
+    return{q:`${a} × ${b} =`,a:ans,steps:[`先當整數算：${a.replace('.','')} × ${b.replace('.','')} = ${(+a*10)*(+b*10)}`,`兩個因數共有 2 位小數，答案往左點 2 位：${ans}`]};},
   // ---- 小數除法 ----
   decDiv:(d)=>{const b=(rnd(2,9)/(d>1?1:1)).toString(),ans=(rnd(11,30*d)/10).toFixed(1);
-    const a=(b*ans).toFixed(1);return{q:`${a} ÷ ${b} =`,a:(+ans).toString()};},
+    const a=(b*ans).toFixed(1);return{q:`${a} ÷ ${b} =`,a:(+ans).toString(),steps:[`把被除數與除數同乘 10：${a} ÷ ${b} = ${a*10} ÷ ${b*10}`,`${a*10} ÷ ${b*10} = ${(+ans).toString()}`]};},
   // ---- 比率與百分率 ----
   percent:(d)=>{const whole=rnd(2,10)*rnd(5,20),p=pick([10,20,25,50,5,30,40,75]);
-    return{q:`${whole} 的 ${p}% 是多少？`,a:''+(whole*p/100)};},
+    const ans=whole*p/100;
+    return{q:`${whole} 的 ${p}% 是多少？`,a:''+ans,steps:[`${p}% = ${fracHTML(p,100)}`,`${whole} × ${p} ÷ 100 = ${ans}`]};},
   // ---- 比與比值 ----
   ratio:(d)=>{const k=rnd(2,6),a=rnd(2,6),b=rnd(2,6);
-    return{q:`${a*k} : ${b*k} 化成最簡單整數比 =`,a:`${a} : ${b}`};},
+    return{q:`${a*k} : ${b*k} 化成最簡單整數比 =`,a:`${a} : ${b}`,steps:[`兩邊同除以 ${k}`,`${a*k} : ${b*k} = ${a} : ${b}`]};},
   // ---- 平行四邊形/三角形/梯形面積 ----
   area:(d)=>{const t=pick(['平行四邊形','三角形','梯形']);
-    if(t==='三角形'){const b=rnd(4,20),h=rnd(4,20);return{q:`底 ${b} cm、高 ${h} cm 的三角形面積 =`,a:`${b*h/2} 平方公分`};}
-    if(t==='梯形'){const u=rnd(3,12),lo=rnd(4,16),h=rnd(4,16);return{q:`上底 ${u}、下底 ${lo}、高 ${h}（cm）的梯形面積 =`,a:`${(u+lo)*h/2} 平方公分`};}
-    const b=rnd(4,20),h=rnd(4,20);return{q:`底 ${b} cm、高 ${h} cm 的平行四邊形面積 =`,a:`${b*h} 平方公分`};},
+    if(t==='三角形'){const b=rnd(4,20),h=rnd(4,20),ans=b*h/2;return{q:`底 ${b} cm、高 ${h} cm 的三角形面積 =`,a:`${ans} 平方公分`,steps:[`面積 = 底 × 高 ÷ 2 = ${b} × ${h} ÷ 2 = ${ans}`]};}
+    if(t==='梯形'){const u=rnd(3,12),lo=rnd(4,16),h=rnd(4,16),ans=(u+lo)*h/2;return{q:`上底 ${u}、下底 ${lo}、高 ${h}（cm）的梯形面積 =`,a:`${ans} 平方公分`,steps:[`面積 = (上底 + 下底) × 高 ÷ 2 = (${u} + ${lo}) × ${h} ÷ 2 = ${ans}`]};}
+    const b=rnd(4,20),h=rnd(4,20),ans=b*h;return{q:`底 ${b} cm、高 ${h} cm 的平行四邊形面積 =`,a:`${ans} 平方公分`,steps:[`面積 = 底 × 高 = ${b} × ${h} = ${ans}`]};},
   // ---- 長方體體積/表面積 ----
   cuboid:(d)=>{const l=rnd(2,12),w=rnd(2,12),h=rnd(2,12);const mode=pick(['體積','表面積']);
-    if(mode==='體積')return{q:`長 ${l}、寬 ${w}、高 ${h}（cm）的長方體體積 =`,a:`${l*w*h} 立方公分`};
-    return{q:`長 ${l}、寬 ${w}、高 ${h}（cm）的長方體表面積 =`,a:`${2*(l*w+l*h+w*h)} 平方公分`};},
+    if(mode==='體積'){const ans=l*w*h;return{q:`長 ${l}、寬 ${w}、高 ${h}（cm）的長方體體積 =`,a:`${ans} 立方公分`,steps:[`體積 = 長 × 寬 × 高 = ${l} × ${w} × ${h} = ${ans}`]};}
+    const ans=2*(l*w+l*h+w*h);return{q:`長 ${l}、寬 ${w}、高 ${h}（cm）的長方體表面積 =`,a:`${ans} 平方公分`,steps:[`表面積 = 2 × (長×寬 + 長×高 + 寬×高)`,`= 2 × (${l*w} + ${l*h} + ${w*h}) = ${ans}`]};},
   // ---- 圓周長 ----
-  circleP:(d)=>{const r=rnd(2,15);return{q:`半徑 ${r} cm 的圓周長 =（π取3.14）`,a:`${(2*r*3.14).toFixed(2)} 公分`};},
+  circleP:(d)=>{const r=rnd(2,15),ans=(2*r*3.14).toFixed(2);return{q:`半徑 ${r} cm 的圓周長 =（π取3.14）`,a:`${ans} 公分`,steps:[`圓周長 = 直徑 × π = ${r*2} × 3.14 = ${ans}`]};},
   // ---- 圓面積 ----
-  circleA:(d)=>{const r=rnd(2,15);return{q:`半徑 ${r} cm 的圓面積 =（π取3.14）`,a:`${(r*r*3.14).toFixed(2)} 平方公分`};},
+  circleA:(d)=>{const r=rnd(2,15),ans=(r*r*3.14).toFixed(2);return{q:`半徑 ${r} cm 的圓面積 =（π取3.14）`,a:`${ans} 平方公分`,steps:[`圓面積 = 半徑 × 半徑 × π = ${r} × ${r} × 3.14 = ${ans}`]};},
   // ---- 速率 ----
-  speed:(d)=>{const v=rnd(3,12)*10,t=rnd(2,6);return{q:`時速 ${v} 公里，行駛 ${t} 小時，共走多少公里？`,a:`${v*t} 公里`};},
+  speed:(d)=>{const v=rnd(3,12)*10,t=rnd(2,6),ans=v*t;return{q:`時速 ${v} 公里，行駛 ${t} 小時，共走多少公里？`,a:`${ans} 公里`,steps:[`距離 = 速率 × 時間 = ${v} × ${t} = ${ans}`]};},
   // ---- 等量公理列式 ----
   equation:(d)=>{const x=rnd(2,15),b=rnd(2,20),a=rnd(2,9);
-    return{q:`${a} × □ + ${b} = ${a*x+b}，□ =`,a:''+x};},
+    return{q:`${a} × □ + ${b} = ${a*x+b}，□ =`,a:''+x,steps:[`兩邊先減 ${b}：${a} × □ = ${a*x}`,`兩邊再除以 ${a}：□ = ${x}`]};},
   // ---- 時間計算 ----
   time:(d)=>{const h=rnd(1,5),m=rnd(1,11)*5,add=rnd(20,90);
-    let tot=h*60+m+add;return{q:`${h}時${m}分 經過 ${add} 分鐘後是幾時幾分？`,a:`${Math.floor(tot/60)}時${tot%60}分`};},
+    let start=h*60+m,tot=start+add;return{q:`${h}時${m}分 經過 ${add} 分鐘後是幾時幾分？`,a:`${Math.floor(tot/60)}時${tot%60}分`,steps:[`${h}時${m}分 = ${start} 分`,`${start} + ${add} = ${tot} 分`,`${tot} 分 = ${Math.floor(tot/60)}時${tot%60}分`]};},
   // ---- 大單位換算 ----
-  unit:(d)=>{const km=rnd(2,9),m=rnd(1,9)*100;return{q:`${km} 公里 ${m} 公尺 = ____ 公尺`,a:''+(km*1000+m)};},
+  unit:(d)=>{const km=rnd(2,9),m=rnd(1,9)*100,ans=km*1000+m;return{q:`${km} 公里 ${m} 公尺 = ____ 公尺`,a:''+ans,steps:[`${km} 公里 = ${km*1000} 公尺`,`${km*1000} + ${m} = ${ans} 公尺`]};},
 };
 
 /* =========================================================================
@@ -435,7 +445,7 @@ $('#importFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new
 function gatherQuestions(){
   const units=curUnits();
   const bank=loadBank(), mix=$('#bankToggle').checked;
-  const out=[]; // {sec, q, a}
+  const out=[]; // {sec, q, a, steps}
   document.querySelectorAll('#unitList input[type=checkbox]').forEach(cb=>{
     if(!cb.checked)return;
     const uid=cb.dataset.id, u=units.find(x=>x.id===uid);
@@ -444,12 +454,12 @@ function gatherQuestions(){
     let pool=[];
     // 題庫題目
     const bq=mix?((bank[bankKey(uid)])||[]):[];
-    bq.forEach(x=>pool.push({q:x.q,a:x.a}));
+    bq.forEach(x=>pool.push({q:x.q,a:x.a,steps:x.steps||[]}));
     // 自動生成補滿
     if(u.gen && GEN[u.gen]){let guard=0;while(pool.length<n && guard<n*4){pool.push(GEN[u.gen](diff));guard++;}}
     // 截到 n 題
     pool=pool.slice(0,n);
-    pool.forEach(p=>out.push({sec:u.name,q:p.q,a:p.a}));
+    pool.forEach(p=>out.push({sec:u.name,q:p.q,a:p.a,steps:p.steps||[]}));
   });
   return out;
 }
@@ -460,6 +470,7 @@ function render(){
   if(!qs.length){box.innerHTML='<div class="empty">沒有可出的題目：請至少勾一個單元、題數&gt;0；無自動題的單元請開「混入題庫」並先建題。</div>';return;}
   const cols=Math.max(1,Math.min(4,+$('#colsInput').value||2));
   const title=$('#titleInput').value||'數學測驗';
+  const showSteps=$('#stepsToggle').checked;
   const ver=$('#versionSel').value, gr=$('#gradeSel').value, sem=$('#semSel').value;
   const subtitle=`${stage} ${gr}年級 ${sem}學期 ・ ${ver}`;
 
@@ -475,9 +486,12 @@ function render(){
         <span>分數：<span class="fill"></span></span>
       </div></div>`;
 
+  const stepHTML=it=>showSteps && it.steps && it.steps.length
+    ? `<div class="steps">${it.steps.map(s=>`<div>${s}</div>`).join('')}</div>`
+    : '';
   const sectionsHTML=(showAns)=>Object.keys(bySec).map(sec=>{
     const items=bySec[sec].map(it=>`<div class="q"><span class="no">${it.gi}.</span>
-        <span class="body">${it.q} ${showAns?`<b>${it.a}</b>`:'<span class="ans-line"></span>'}</span></div>`).join('');
+        <span class="body">${it.q} ${showAns?`<b>${it.a}</b>${stepHTML(it)}`:'<span class="ans-line"></span>'}</span></div>`).join('');
     return `<div class="sec-title">${sec}</div><div class="qgrid" style="grid-template-columns:repeat(${cols},1fr)">${items}</div>`;
   }).join('');
 
