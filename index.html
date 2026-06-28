@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>課前考數學考卷產生器</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#fff; --line:#e2e6ef; --ink:#1f2937;
+    --accent:#2563eb; --accent-d:#1e40af; --muted:#6b7280; --soft:#eef2ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+       background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6}
+  .layout{display:grid;grid-template-columns:360px 1fr;min-height:100vh}
+  /* ---------- 控制面板 ---------- */
+  .panel{background:var(--card);border-right:1px solid var(--line);padding:18px;overflow-y:auto;height:100vh}
+  .panel h1{font-size:18px;margin:0 0 4px}
+  .panel .sub{color:var(--muted);font-size:12px;margin-bottom:16px}
+  .group{margin-bottom:16px}
+  .group > label{display:block;font-weight:600;font-size:13px;margin-bottom:6px}
+  select,input[type=text],input[type=number]{
+    width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fff}
+  .row{display:flex;gap:8px}
+  .row > *{flex:1}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{padding:6px 12px;border:1px solid var(--line);border-radius:20px;cursor:pointer;font-size:13px;background:#fff;user-select:none}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .units{border:1px solid var(--line);border-radius:8px;max-height:300px;overflow-y:auto}
+  .unit{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line)}
+  .unit:last-child{border-bottom:none}
+  .unit input[type=checkbox]{width:16px;height:16px;flex:0 0 auto}
+  .unit .nm{flex:1;font-size:13px}
+  .unit .nm small{color:var(--muted);display:block;font-size:11px}
+  .unit .cnt{flex:0 0 56px}
+  .unit.nogen .nm{color:var(--muted)}
+  .btns{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  button{font-family:inherit;font-size:14px;padding:10px;border:none;border-radius:8px;cursor:pointer;font-weight:600}
+  .b-primary{background:var(--accent);color:#fff}
+  .b-primary:hover{background:var(--accent-d)}
+  .b-soft{background:var(--soft);color:var(--accent-d)}
+  .b-line{background:#fff;border:1px solid var(--line);color:var(--ink);font-weight:500}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;cursor:pointer}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px}
+  details{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:8px}
+  summary{cursor:pointer;font-weight:600;font-size:13px}
+  /* ---------- 預覽區 ---------- */
+  .preview{padding:24px;overflow-y:auto;height:100vh;background:#e9edf5}
+  .paper{background:#fff;width:210mm;min-height:297mm;margin:0 auto 24px;padding:18mm 16mm;
+         box-shadow:0 2px 14px rgba(0,0,0,.12);color:#000}
+  .paper-head{border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:14px}
+  .paper-head .title{font-size:22px;font-weight:800;text-align:center;letter-spacing:2px}
+  .paper-head .meta{display:flex;justify-content:space-between;font-size:13px;margin-top:8px;gap:16px}
+  .paper-head .meta .fill{border-bottom:1px solid #000;flex:1;min-width:60px;display:inline-block}
+  .sec-title{font-weight:700;font-size:15px;margin:14px 0 8px;background:#f0f0f0;padding:4px 8px;border-left:4px solid #000}
+  .qgrid{display:grid;gap:10px 18px}
+  .q{display:flex;gap:6px;font-size:15px;align-items:baseline;break-inside:avoid;min-height:34px}
+  .q .no{font-weight:700;flex:0 0 auto}
+  .q .body{flex:1}
+  .q .ans-line{display:inline-block;border-bottom:1px solid #888;min-width:70px}
+  .answers .q .body{color:#b91c1c;font-weight:600}
+  .empty{color:#9aa1ad;text-align:center;padding:80px 0;font-size:15px}
+  .frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:-0.45em;margin:0 2px;line-height:1.05}
+  .frac .n{border-bottom:1.4px solid currentColor;padding:0 3px}
+  .frac .d{padding:0 3px}
+  @media print{
+    .panel{display:none}
+    .layout{display:block}
+    .preview{padding:0;background:#fff;height:auto;overflow:visible}
+    .paper{box-shadow:none;margin:0;width:auto;min-height:auto;padding:12mm 12mm}
+    .paper.pb{page-break-before:always}
+    @page{size:A4;margin:0}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- ============ 控制面板 ============ -->
+  <aside class="panel">
+    <h1>📐 課前考產生器</h1>
+    <div class="sub">資料驅動・對齊108課綱・可匯出 PDF</div>
+
+    <div class="group">
+      <label>學制</label>
+      <div class="chips" id="stageChips"></div>
+    </div>
+
+    <div class="group">
+      <div class="row">
+        <div><label>年級</label><select id="gradeSel"></select></div>
+        <div><label>學期</label><select id="semSel"></select></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <label>版本</label>
+      <select id="versionSel">
+        <option value="通用">三版本通用（依課綱主題）</option>
+        <option value="康軒">康軒</option>
+        <option value="南一">南一</option>
+        <option value="翰林">翰林</option>
+      </select>
+      <div class="hint">v1 三版本共用課綱主題；各版本單元命名差異可日後補上。</div>
+    </div>
+
+    <div class="group">
+      <label>單元（勾選＋設定每單元題數）</label>
+      <div class="units" id="unitList"></div>
+      <div class="row" style="margin-top:6px">
+        <button class="b-line" id="selAll">全選</button>
+        <button class="b-line" id="selNone">全不選</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <label>難度</label>
+      <div class="chips" id="diffChips">
+        <span class="chip" data-d="1">基礎</span>
+        <span class="chip on" data-d="2">標準</span>
+        <span class="chip" data-d="3">挑戰</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <label>考卷設定</label>
+      <input type="text" id="titleInput" placeholder="考卷標題" value="數學課前測驗">
+      <div class="row" style="margin-top:8px">
+        <div><label class="hint">每列題數</label><input type="number" id="colsInput" value="2" min="1" max="4"></div>
+      </div>
+      <label class="toggle" style="margin-top:10px"><input type="checkbox" id="ansToggle" checked> 附答案卷（自動分頁）</label>
+      <label class="toggle" style="margin-top:6px"><input type="checkbox" id="bankToggle"> 混入我的題庫題目</label>
+    </div>
+
+    <div class="btns">
+      <button class="b-primary" id="genBtn">🎲 生成考卷</button>
+      <button class="b-soft" id="printBtn">🖨️ 列印 / 另存 PDF</button>
+    </div>
+
+    <details>
+      <summary>📚 我的題庫（手動新增題目）</summary>
+      <div class="hint" style="margin:6px 0">為目前選的「年級／學期／版本」下的某單元手動加題。存在瀏覽器，可匯出備份。</div>
+      <select id="bankUnitSel"></select>
+      <input type="text" id="bankQ" placeholder="題目（例：3/4 + 1/6 =）" style="margin-top:6px">
+      <input type="text" id="bankA" placeholder="答案（例：11/12）" style="margin-top:6px">
+      <button class="b-line" id="bankAdd" style="margin-top:6px;width:100%">＋ 加入題庫</button>
+      <div id="bankList" style="margin-top:8px;font-size:12px"></div>
+    </details>
+
+    <details>
+      <summary>💾 題庫備份</summary>
+      <div class="btns" style="margin-top:8px">
+        <button class="b-line" id="exportBtn">⬇️ 匯出題庫 JSON</button>
+        <button class="b-line" id="importBtn">⬆️ 匯入題庫 JSON</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none">
+      </div>
+    </details>
+  </aside>
+
+  <!-- ============ 預覽 ============ -->
+  <main class="preview">
+    <div id="output"><div class="empty">在左側選好單元與題數，按「生成考卷」👈</div></div>
+  </main>
+</div>
+
+<script>
+/* =========================================================================
+   1) 工具
+   ========================================================================= */
+const rnd = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick = arr => arr[rnd(0,arr.length-1)];
+const gcd = (a,b)=>{a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a||1;};
+const lcm = (a,b)=>a/gcd(a,b)*b;
+// 分數渲染（HTML）
+function F(n,d){ return `<span class="frac"><span class="n">${n}</span><span class="d">${d}</span></span>`; }
+// 帶分數 / 真分數簡化後的字串（純文字，給答案用）
+function fracStr(n,d){
+  const g=gcd(n,d); n/=g; d/=g;
+  if(d===1) return ''+n;
+  const w=Math.floor(n/d), r=n%d;
+  if(w>0 && r>0) return `${w} ${r}/${d}`;
+  return `${n}/${d}`;
+}
+// 分數渲染（含帶分數）給題目顯示
+function fracHTML(n,d){
+  const g=gcd(n,d); n/=g; d/=g;
+  if(d===1) return ''+n;
+  const w=Math.floor(n/d), r=n%d;
+  if(w>0 && r>0) return `${w}${F(r,d)}`;
+  return F(n,d);
+}
+
+/* =========================================================================
+   2) 題目生成器庫  gen(diff) -> {q:HTML, a:HTML/text}
+   diff: 1基礎 2標準 3挑戰
+   ========================================================================= */
+const GEN = {
+  // ---- 因數倍數 ----
+  factors:(d)=>{const n=rnd(d*8,d*18+10);return{q:`求 ${n} 的所有因數：`,a:Array.from({length:n},(_, i)=>i+1).filter(x=>n%x===0).join('、')};},
+  gcd:(d)=>{const a=rnd(6,12*d),b=rnd(6,12*d);return{q:`(${a}, ${b}) 的最大公因數 =`,a:''+gcd(a,b)};},
+  lcm:(d)=>{const a=rnd(3,6*d),b=rnd(3,6*d);return{q:`[${a}, ${b}] 的最小公倍數 =`,a:''+lcm(a,b)};},
+  // ---- 整數四則 ----
+  intMixed:(d)=>{const a=rnd(10,30*d),b=rnd(2,9),c=rnd(10,40*d),e=rnd(2,9);
+    return{q:`(${a} + ${b}) × ${e} − ${c} =`,a:''+((a+b)*e-c)};},
+  // ---- 異分母分數加減 ----
+  fracAddSub:(d)=>{const d1=rnd(2,5+d),d2=rnd(2,5+d);const n1=rnd(1,d1-1),n2=rnd(1,d2-1);
+    const op=pick(['+','−']);const L=lcm(d1,d2);let num=op==='+'?n1*(L/d1)+n2*(L/d2):n1*(L/d1)-n2*(L/d2);
+    if(op==='−'&&num<0)return GEN.fracAddSub(d);
+    return{q:`${fracHTML(n1,d1)} ${op} ${fracHTML(n2,d2)} =`,a:fracStr(num,L)};},
+  // ---- 分數乘法 ----
+  fracMul:(d)=>{const n1=rnd(1,4+d),d1=rnd(n1+1,6+d),n2=rnd(1,4+d),d2=rnd(n2+1,6+d);
+    return{q:`${fracHTML(n1,d1)} × ${fracHTML(n2,d2)} =`,a:fracStr(n1*n2,d1*d2)};},
+  // ---- 分數除法 ----
+  fracDiv:(d)=>{const n1=rnd(1,4+d),d1=rnd(n1+1,6+d),n2=rnd(1,4+d),d2=rnd(n2+1,6+d);
+    return{q:`${fracHTML(n1,d1)} ÷ ${fracHTML(n2,d2)} =`,a:fracStr(n1*d2,d1*n2)};},
+  // ---- 小數乘法 ----
+  decMul:(d)=>{const a=(rnd(11,40*d)/10).toFixed(1),b=(rnd(11,30*d)/10).toFixed(1);
+    return{q:`${a} × ${b} =`,a:(a*b).toFixed(2)};},
+  // ---- 小數除法 ----
+  decDiv:(d)=>{const b=(rnd(2,9)/(d>1?1:1)).toString(),ans=(rnd(11,30*d)/10).toFixed(1);
+    const a=(b*ans).toFixed(1);return{q:`${a} ÷ ${b} =`,a:(+ans).toString()};},
+  // ---- 比率與百分率 ----
+  percent:(d)=>{const whole=rnd(2,10)*rnd(5,20),p=pick([10,20,25,50,5,30,40,75]);
+    return{q:`${whole} 的 ${p}% 是多少？`,a:''+(whole*p/100)};},
+  // ---- 比與比值 ----
+  ratio:(d)=>{const k=rnd(2,6),a=rnd(2,6),b=rnd(2,6);
+    return{q:`${a*k} : ${b*k} 化成最簡單整數比 =`,a:`${a} : ${b}`};},
+  // ---- 平行四邊形/三角形/梯形面積 ----
+  area:(d)=>{const t=pick(['平行四邊形','三角形','梯形']);
+    if(t==='三角形'){const b=rnd(4,20),h=rnd(4,20);return{q:`底 ${b} cm、高 ${h} cm 的三角形面積 =`,a:`${b*h/2} 平方公分`};}
+    if(t==='梯形'){const u=rnd(3,12),lo=rnd(4,16),h=rnd(4,16);return{q:`上底 ${u}、下底 ${lo}、高 ${h}（cm）的梯形面積 =`,a:`${(u+lo)*h/2} 平方公分`};}
+    const b=rnd(4,20),h=rnd(4,20);return{q:`底 ${b} cm、高 ${h} cm 的平行四邊形面積 =`,a:`${b*h} 平方公分`};},
+  // ---- 長方體體積/表面積 ----
+  cuboid:(d)=>{const l=rnd(2,12),w=rnd(2,12),h=rnd(2,12);const mode=pick(['體積','表面積']);
+    if(mode==='體積')return{q:`長 ${l}、寬 ${w}、高 ${h}（cm）的長方體體積 =`,a:`${l*w*h} 立方公分`};
+    return{q:`長 ${l}、寬 ${w}、高 ${h}（cm）的長方體表面積 =`,a:`${2*(l*w+l*h+w*h)} 平方公分`};},
+  // ---- 圓周長 ----
+  circleP:(d)=>{const r=rnd(2,15);return{q:`半徑 ${r} cm 的圓周長 =（π取3.14）`,a:`${(2*r*3.14).toFixed(2)} 公分`};},
+  // ---- 圓面積 ----
+  circleA:(d)=>{const r=rnd(2,15);return{q:`半徑 ${r} cm 的圓面積 =（π取3.14）`,a:`${(r*r*3.14).toFixed(2)} 平方公分`};},
+  // ---- 速率 ----
+  speed:(d)=>{const v=rnd(3,12)*10,t=rnd(2,6);return{q:`時速 ${v} 公里，行駛 ${t} 小時，共走多少公里？`,a:`${v*t} 公里`};},
+  // ---- 等量公理列式 ----
+  equation:(d)=>{const x=rnd(2,15),b=rnd(2,20),a=rnd(2,9);
+    return{q:`${a} × □ + ${b} = ${a*x+b}，□ =`,a:''+x};},
+  // ---- 時間計算 ----
+  time:(d)=>{const h=rnd(1,5),m=rnd(1,11)*5,add=rnd(20,90);
+    let tot=h*60+m+add;return{q:`${h}時${m}分 經過 ${add} 分鐘後是幾時幾分？`,a:`${Math.floor(tot/60)}時${tot%60}分`};},
+  // ---- 大單位換算 ----
+  unit:(d)=>{const km=rnd(2,9),m=rnd(1,9)*100;return{q:`${km} 公里 ${m} 公尺 = ____ 公尺`,a:''+(km*1000+m)};},
+};
+
+/* =========================================================================
+   3) 課綱資料  學制 -> 年級 -> 學期 -> 單元[{id,name,gen}]
+      gen 為 null 表示尚無自動生成器（靠手動題庫）
+   ========================================================================= */
+const U=(id,name,gen)=>({id,name,gen:gen||null});
+const CUR = {
+  "國小":{
+    grades:["5","6"],
+    data:{
+      "5":{
+        "上":[U('g5s1_decfrac','小數與分數',null),U('g5s1_factor','因數與倍數','gcd'),U('g5s1_factors','求因數','factors'),
+              U('g5s1_plane','平面圖形',null),U('g5s1_int4','整數四則計算','intMixed'),U('g5s1_fracas','異分母分數加減','fracAddSub'),
+              U('g5s1_sym','線對稱圖形',null),U('g5s1_area','面積（平行四邊形/三角形/梯形）','area'),
+              U('g5s1_cuboid','正方體與長方體','cuboid'),U('g5s1_stat','統計圖',null)],
+        "下":[U('g5s2_fmul','分數乘法','fracMul'),U('g5s2_vol','體積','cuboid'),U('g5s2_cap','容積',null),
+              U('g5s2_dmul','小數乘法與估算','decMul'),U('g5s2_time','時間的計算','time'),U('g5s2_surf','表面積','cuboid'),
+              U('g5s2_pct','比率與百分率','percent'),U('g5s2_solve','怎樣解題',null),U('g5s2_unit','生活中的大單位','unit')]
+      },
+      "6":{
+        "上":[U('g6s1_gcdlcm','最大公因數與最小公倍數','lcm'),U('g6s1_fdiv','分數除法','fracDiv'),U('g6s1_solid','柱體與錐體',null),
+              U('g6s1_ddiv','小數除法','decDiv'),U('g6s1_rel','數量關係','equation'),U('g6s1_ratio','比、比值、正比','ratio'),
+              U('g6s1_cir_p','圓周長','circleP'),U('g6s1_cir_a','圓面積','circleA'),U('g6s1_scale','縮圖放大圖比例尺',null),U('g6s1_pie','圓形圖',null)],
+        "下":[U('g6s2_fd4','分數與小數的四則','intMixed'),U('g6s2_speed','速率','speed'),U('g6s2_eq','列式與等量公理','equation'),
+              U('g6s2_pvol','柱體體積','cuboid'),U('g6s2_solve','怎樣解題',null),U('g6s2_simp','簡化問題',null),U('g6s2_psurf','柱體表面積','cuboid')]
+      }
+    }
+  },
+  // —— 擴展預留：之後填入單元即可，程式不用改 ——
+  "國中":{grades:["7","8","9"],data:{"7":{"上":[],"下":[]},"8":{"上":[],"下":[]},"9":{"上":[],"下":[]}}},
+  "高中":{grades:["10","11","12"],data:{"10":{"上":[],"下":[]},"11":{"上":[],"下":[]},"12":{"上":[],"下":[]}}}
+};
+
+/* =========================================================================
+   4) 狀態 + UI 綁定
+   ========================================================================= */
+const $=s=>document.querySelector(s);
+let stage="國小", diff=2;
+
+function buildStageChips(){
+  const box=$('#stageChips'); box.innerHTML='';
+  Object.keys(CUR).forEach(s=>{
+    const c=document.createElement('span');c.className='chip'+(s===stage?' on':'');c.textContent=s;
+    c.onclick=()=>{stage=s;buildStageChips();fillGrades();};box.appendChild(c);
+  });
+}
+function fillGrades(){
+  const g=$('#gradeSel');g.innerHTML='';
+  CUR[stage].grades.forEach(gr=>g.add(new Option(gr+'年級',gr)));
+  fillUnits();
+}
+$('#semSel').innerHTML='<option value="上">上學期</option><option value="下">下學期</option>';
+
+function curUnits(){
+  const gr=$('#gradeSel').value, sem=$('#semSel').value;
+  return (CUR[stage].data[gr] && CUR[stage].data[gr][sem]) || [];
+}
+function fillUnits(){
+  const list=$('#unitList'); list.innerHTML='';
+  const units=curUnits();
+  if(!units.length){list.innerHTML='<div class="unit"><span class="nm" style="color:#9aa1ad">此範圍尚未建立單元（可日後擴充）</span></div>';}
+  units.forEach(u=>{
+    const row=document.createElement('div');row.className='unit'+(u.gen?'':' nogen');
+    row.innerHTML=`<input type="checkbox" ${u.gen?'checked':''} data-id="${u.id}">
+      <span class="nm">${u.name}${u.gen?'':'<small>無自動題，需用題庫</small>'}</span>
+      <input class="cnt" type="number" min="0" max="50" value="${u.gen?5:0}" data-cnt="${u.id}">`;
+    list.appendChild(row);
+  });
+  fillBankUnitSel();
+}
+function fillBankUnitSel(){
+  const s=$('#bankUnitSel');s.innerHTML='';
+  curUnits().forEach(u=>s.add(new Option(u.name,u.id)));
+  renderBankList();
+}
+$('#gradeSel').onchange=fillUnits;
+$('#semSel').onchange=fillUnits;
+$('#versionSel').onchange=fillUnits;
+$('#selAll').onclick=()=>document.querySelectorAll('#unitList input[type=checkbox]').forEach(c=>c.checked=true);
+$('#selNone').onclick=()=>document.querySelectorAll('#unitList input[type=checkbox]').forEach(c=>c.checked=false);
+$('#diffChips').onclick=e=>{if(!e.target.dataset.d)return;
+  diff=+e.target.dataset.d;document.querySelectorAll('#diffChips .chip').forEach(c=>c.classList.toggle('on',c.dataset.d==diff));};
+
+/* =========================================================================
+   5) 我的題庫（localStorage）
+   ========================================================================= */
+const BKEY='mathbank.v1';
+function loadBank(){try{return JSON.parse(localStorage.getItem(BKEY))||{};}catch(e){return{};}}
+function saveBank(b){localStorage.setItem(BKEY,JSON.stringify(b));}
+function bankKey(uid){return `${stage}/${$('#gradeSel').value}/${$('#semSel').value}/${$('#versionSel').value}/${uid}`;}
+function renderBankList(){
+  const uid=$('#bankUnitSel').value;if(!uid){$('#bankList').innerHTML='';return;}
+  const arr=(loadBank()[bankKey(uid)])||[];
+  $('#bankList').innerHTML = arr.length? arr.map((x,i)=>
+    `<div style="display:flex;gap:6px;padding:3px 0;border-bottom:1px solid #eee">
+       <span style="flex:1">${x.q} <b style="color:#b91c1c">${x.a}</b></span>
+       <a href="#" data-del="${i}" style="color:#b91c1c;text-decoration:none">✕</a></div>`).join('')
+    : '<div style="color:#9aa1ad">此單元尚無自建題目</div>';
+  $('#bankList').querySelectorAll('[data-del]').forEach(a=>a.onclick=ev=>{
+    ev.preventDefault();const b=loadBank();b[bankKey(uid)].splice(+a.dataset.del,1);saveBank(b);renderBankList();});
+}
+$('#bankUnitSel').onchange=renderBankList;
+$('#bankAdd').onclick=()=>{
+  const q=$('#bankQ').value.trim(),a=$('#bankA').value.trim(),uid=$('#bankUnitSel').value;
+  if(!q||!uid){alert('請輸入題目');return;}
+  const b=loadBank();const k=bankKey(uid);(b[k]=b[k]||[]).push({q,a});saveBank(b);
+  $('#bankQ').value='';$('#bankA').value='';renderBankList();
+};
+$('#exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify(loadBank(),null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='我的題庫.json';a.click();
+};
+$('#importBtn').onclick=()=>$('#importFile').click();
+$('#importFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const incoming=JSON.parse(r.result);const b=loadBank();
+    Object.keys(incoming).forEach(k=>{b[k]=(b[k]||[]).concat(incoming[k]);});saveBank(b);renderBankList();alert('題庫已匯入合併');}
+    catch(err){alert('檔案格式錯誤');}};r.readAsText(f);};
+
+/* =========================================================================
+   6) 生成考卷
+   ========================================================================= */
+function gatherQuestions(){
+  const units=curUnits();
+  const bank=loadBank(), mix=$('#bankToggle').checked;
+  const out=[]; // {sec, q, a}
+  document.querySelectorAll('#unitList input[type=checkbox]').forEach(cb=>{
+    if(!cb.checked)return;
+    const uid=cb.dataset.id, u=units.find(x=>x.id===uid);
+    const n=+document.querySelector(`[data-cnt="${uid}"]`).value||0;
+    if(n<=0)return;
+    let pool=[];
+    // 題庫題目
+    const bq=mix?((bank[bankKey(uid)])||[]):[];
+    bq.forEach(x=>pool.push({q:x.q,a:x.a}));
+    // 自動生成補滿
+    if(u.gen && GEN[u.gen]){let guard=0;while(pool.length<n && guard<n*4){pool.push(GEN[u.gen](diff));guard++;}}
+    // 截到 n 題
+    pool=pool.slice(0,n);
+    pool.forEach(p=>out.push({sec:u.name,q:p.q,a:p.a}));
+  });
+  return out;
+}
+
+function render(){
+  const qs=gatherQuestions();
+  const box=$('#output');
+  if(!qs.length){box.innerHTML='<div class="empty">沒有可出的題目：請至少勾一個單元、題數&gt;0；無自動題的單元請開「混入題庫」並先建題。</div>';return;}
+  const cols=Math.max(1,Math.min(4,+$('#colsInput').value||2));
+  const title=$('#titleInput').value||'數學測驗';
+  const ver=$('#versionSel').value, gr=$('#gradeSel').value, sem=$('#semSel').value;
+  const subtitle=`${stage} ${gr}年級 ${sem}學期 ・ ${ver}`;
+
+  // 依單元分段
+  const bySec={};qs.forEach((x,i)=>{(bySec[x.sec]=bySec[x.sec]||[]).push({...x,gi:i+1});});
+
+  const head=(extra)=>`<div class="paper-head">
+      <div class="title">${title}${extra||''}</div>
+      <div class="meta">
+        <span>${subtitle}</span>
+        <span>姓名：<span class="fill"></span></span>
+        <span>日期：<span class="fill"></span></span>
+        <span>分數：<span class="fill"></span></span>
+      </div></div>`;
+
+  const sectionsHTML=(showAns)=>Object.keys(bySec).map(sec=>{
+    const items=bySec[sec].map(it=>`<div class="q"><span class="no">${it.gi}.</span>
+        <span class="body">${it.q} ${showAns?`<b>${it.a}</b>`:'<span class="ans-line"></span>'}</span></div>`).join('');
+    return `<div class="sec-title">${sec}</div><div class="qgrid" style="grid-template-columns:repeat(${cols},1fr)">${items}</div>`;
+  }).join('');
+
+  let html=`<div class="paper">${head()}${sectionsHTML(false)}</div>`;
+  if($('#ansToggle').checked){
+    html+=`<div class="paper pb answers">${head('（解答）')}${sectionsHTML(true)}</div>`;
+  }
+  box.innerHTML=html;
+}
+$('#genBtn').onclick=render;
+$('#printBtn').onclick=()=>{if($('#output .empty'))render();window.print();};
+
+/* =========================================================================
+   7) 啟動
+   ========================================================================= */
+buildStageChips();fillGrades();
+</script>
+</body>
+</html>
