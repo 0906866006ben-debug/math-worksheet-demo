@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>課前考數學考卷產生器</title>
 <style>
   :root{
@@ -78,8 +79,10 @@
     .paper{width:auto;max-width:100%;min-height:auto;padding:10mm 8mm;margin:0 auto 16px}
     .qgrid{grid-template-columns:1fr !important}
   }
+  .regen-fab{position:fixed;right:16px;bottom:16px;z-index:50;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;font-size:22px;border:none;box-shadow:0 3px 12px rgba(0,0,0,.3);cursor:pointer}
+  .regen-fab:active{transform:scale(.92)}
   @media print{
-    .panel,.panel-toggle,.panel-backdrop{display:none}
+    .panel,.panel-toggle,.panel-backdrop,.regen-fab{display:none}
     .layout{display:block}
     .preview{padding:0;background:#fff;height:auto;overflow:visible}
     .paper{box-shadow:none;margin:0;width:auto;min-height:auto;padding:12mm 12mm}
@@ -90,6 +93,7 @@
 </head>
 <body>
 <button class="panel-toggle" id="panelToggle">☰ 設定</button>
+<button class="regen-fab" id="regenFab" title="重新生成考卷">🔄</button>
 <div class="panel-backdrop" id="panelBackdrop"></div>
 <div class="layout">
   <!-- ============ 控制面板 ============ -->
@@ -140,6 +144,11 @@
 
     <div class="group">
       <label>考卷設定</label>
+      <select id="variantSel">
+        <option value="1">單卷</option>
+        <option value="2">A、B 卷</option>
+        <option value="3">A、B、C 卷</option>
+      </select>
       <input type="text" id="titleInput" placeholder="考卷標題" value="數學課前測驗">
       <div class="row" style="margin-top:8px">
         <input type="text" id="schoolInput" placeholder="學校名稱">
@@ -281,6 +290,50 @@ const GEN = {
   // ---- 大單位換算 ----
   unit:(d)=>{const km=rnd(2,9),m=rnd(1,9)*100,ans=km*1000+m;return{q:`${km} 公里 ${m} 公尺 = ____ 公尺`,a:''+ans,steps:[`${km} 公里 = ${km*1000} 公尺`,`${km*1000} + ${m} = ${ans} 公尺`]};},
 };
+
+/* ===== 創意題庫擴充：情境應用題（與計算題隨機交替，提升多元與創意） ===== */
+const _names=['小明','小華','小美','阿傑','婷婷','志明','曉君','大雄','靜香','宜蓁'];
+const _nm=()=>pick(_names);
+const _pf=(maxD)=>{const dd=rnd(3,maxD);return [rnd(1,dd-1),dd];};
+const WORD={
+  gcd:(d)=>{const g=rnd(3,9),a=g*rnd(2,6),b=g*rnd(2,6),ans=gcd(a,b);
+    return{q:`有兩條彩帶長 ${a} 公分和 ${b} 公分，要剪成一樣長且最長的小段，每段最長幾公分？`,a:`${ans} 公分`,steps:[`求 (${a}, ${b}) 的最大公因數 = ${ans} 公分`]};},
+  lcm:(d)=>{const a=rnd(2,8),b=rnd(2,8),ans=lcm(a,b);
+    return{q:`紅燈每 ${a} 秒閃一次、綠燈每 ${b} 秒閃一次，這次同時閃後，再過幾秒會再次同時閃？`,a:`${ans} 秒`,steps:[`求 [${a}, ${b}] 的最小公倍數 = ${ans} 秒`]};},
+  intMixed:(d)=>{const price=rnd(15,40),qty=rnd(2,5),other=rnd(20,60),change=rnd(5,80),money=price*qty+other+change;
+    return{q:`${_nm()}帶了 ${money} 元，買了 ${qty} 個 ${price} 元的麵包和一瓶 ${other} 元的牛奶，找回多少元？`,a:`${change} 元`,steps:[`花費 = ${price} × ${qty} + ${other} = ${price*qty+other} 元`,`找回 = ${money} − ${price*qty+other} = ${change} 元`]};},
+  fracAddSub:(d)=>{const [n1,d1]=_pf(6),[n2,d2]=_pf(6),L=lcm(d1,d2),sum=n1*(L/d1)+n2*(L/d2);
+    return{q:`一條緞帶，做花用掉 ${fracHTML(n1,d1)} 公尺、包裝用掉 ${fracHTML(n2,d2)} 公尺，一共用掉多少公尺？`,a:`${fracStr(sum,L)} 公尺`,steps:[`通分，公分母 ${L}`,`${fracHTML(n1*(L/d1),L)} + ${fracHTML(n2*(L/d2),L)} = ${fracStr(sum,L)}`]};},
+  fracMul:(d)=>{const [n,dd]=_pf(6),base=rnd(2,9),whole=base*dd,ans=base*n;
+    return{q:`面積 ${whole} 平方公尺的菜園，其中 ${fracHTML(n,dd)} 用來種青菜，青菜佔多少平方公尺？`,a:`${ans} 平方公尺`,steps:[`${whole} × ${fracHTML(n,dd)} = ${whole} × ${n} ÷ ${dd} = ${ans}`]};},
+  fracDiv:(d)=>{const dd=rnd(3,6),whole=rnd(2,6),ans=whole*dd;
+    return{q:`有 ${whole} 公升果汁，每杯裝 ${fracHTML(1,dd)} 公升，可以裝滿幾杯？`,a:`${ans} 杯`,steps:[`${whole} ÷ ${fracHTML(1,dd)} = ${whole} × ${dd} = ${ans}`]};},
+  decMul:(d)=>{const price=(rnd(15,60)/10).toFixed(1),kg=rnd(2,6),ans=+(price*kg).toFixed(2);
+    return{q:`每公斤 ${price} 元的蘋果，買了 ${kg} 公斤，要付多少元？`,a:`${ans} 元`,steps:[`${price} × ${kg} = ${ans} 元`]};},
+  decDiv:(d)=>{const n=rnd(2,6),each=(rnd(11,30)/10).toFixed(1),total=(each*n).toFixed(1);
+    return{q:`一條 ${total} 公尺的繩子，平均剪成 ${n} 段，每段多長？`,a:`${+each} 公尺`,steps:[`${total} ÷ ${n} = ${+each} 公尺`]};},
+  percent:(d)=>{const price=rnd(2,20)*50,z=rnd(5,9),pct=z*10,ans=price*pct/100,zc=['零','一','二','三','四','五','六','七','八','九'][z];
+    return{q:`原價 ${price} 元的書打 ${zc}折，售價多少元？`,a:`${ans} 元`,steps:[`打${zc}折 = ${pct}%`,`${price} × ${pct}% = ${ans} 元`]};},
+  ratio:(d)=>{const k=rnd(2,5),a=rnd(1,6),b=rnd(1,6),g=gcd(a,b);
+    return{q:`班上男生 ${a*k} 人、女生 ${b*k} 人，男女人數的最簡單整數比 =`,a:`${a/g} : ${b/g}`,steps:[`${a*k} : ${b*k}，兩邊同除以 ${k*g}`,`= ${a/g} : ${b/g}`]};},
+  area:(d)=>{if(rnd(0,1)){const l=rnd(4,15),w=rnd(3,12);return{q:`一間長方形教室長 ${l} 公尺、寬 ${w} 公尺，地板面積多少平方公尺？`,a:`${l*w} 平方公尺`,steps:[`面積 = 長 × 寬 = ${l} × ${w} = ${l*w}`]};}
+    const b=rnd(4,16),h=rnd(4,16);return{q:`一面三角形旗子，底 ${b} 公分、高 ${h} 公分，面積多少平方公分？`,a:`${b*h/2} 平方公分`,steps:[`面積 = 底 × 高 ÷ 2 = ${b} × ${h} ÷ 2 = ${b*h/2}`]};},
+  cuboid:(d)=>{const l=rnd(3,15),w=rnd(3,12),h=rnd(3,12);if(rnd(0,1))return{q:`一個長 ${l}、寬 ${w}、高 ${h}（公分）的長方體魚缸，最多能裝多少立方公分的水？`,a:`${l*w*h} 立方公分`,steps:[`容積 = 長 × 寬 × 高 = ${l} × ${w} × ${h} = ${l*w*h}`]};
+    return{q:`包一個長 ${l}、寬 ${w}、高 ${h}（公分）的禮物盒，至少需要多少平方公分包裝紙（不含重疊）？`,a:`${2*(l*w+l*h+w*h)} 平方公分`,steps:[`表面積 = 2×(${l*w}+${l*h}+${w*h}) = ${2*(l*w+l*h+w*h)}`]};},
+  circleP:(d)=>{const r=rnd(2,15),ans=(2*r*3.14).toFixed(2);return{q:`一個半徑 ${r} 公分的車輪，滾一圈前進多少公分？（π取3.14）`,a:`${ans} 公分`,steps:[`周長 = 直徑 × π = ${2*r} × 3.14 = ${ans}`]};},
+  circleA:(d)=>{const r=rnd(2,12),ans=(r*r*3.14).toFixed(2);return{q:`一個半徑 ${r} 公尺的圓形花園，面積多少平方公尺？（π取3.14）`,a:`${ans} 平方公尺`,steps:[`面積 = 半徑×半徑×π = ${r}×${r}×3.14 = ${ans}`]};},
+  speed:(d)=>{const v=rnd(3,12)*10,t=rnd(2,6),dist=v*t,f=rnd(1,3);
+    if(f===1)return{q:`一輛車時速 ${v} 公里，行駛 ${t} 小時，共行駛多少公里？`,a:`${dist} 公里`,steps:[`距離 = 速率 × 時間 = ${v} × ${t} = ${dist}`]};
+    if(f===2)return{q:`${_nm()}騎車 ${dist} 公里花了 ${t} 小時，平均時速多少公里？`,a:`${v} 公里`,steps:[`速率 = 距離 ÷ 時間 = ${dist} ÷ ${t} = ${v}`]};
+    return{q:`火車以時速 ${v} 公里行駛 ${dist} 公里，需要幾小時？`,a:`${t} 小時`,steps:[`時間 = 距離 ÷ 速率 = ${dist} ÷ ${v} = ${t}`]};},
+  equation:(d)=>{const pens=rnd(2,6),pen=rnd(5,15),eraser=rnd(5,20),total=pens*pen+eraser;
+    return{q:`買 ${pens} 枝鉛筆和一個 ${eraser} 元的橡皮擦共付 ${total} 元，每枝鉛筆多少元？`,a:`${pen} 元`,steps:[`鉛筆總價 = ${total} − ${eraser} = ${pens*pen} 元`,`每枝 = ${pens*pen} ÷ ${pens} = ${pen} 元`]};},
+  time:(d)=>{const h=rnd(1,8),m=pick([0,10,15,20,30,40,45]),len=rnd(80,150),start=h*60+m,end=start+len;
+    return{q:`一場電影 ${h} 時 ${m} 分開始，全長 ${len} 分鐘，幾點幾分結束？`,a:`${Math.floor(end/60)%24} 時 ${end%60} 分`,steps:[`${h}時${m}分 = ${start} 分；${start} + ${len} = ${end} 分`,`= ${Math.floor(end/60)%24} 時 ${end%60} 分`]};},
+  unit:(d)=>{const a=rnd(1,2),b=rnd(10,99),ans=a*100+b;
+    return{q:`${_nm()}身高 ${a} 公尺 ${b} 公分，等於幾公分？`,a:`${ans} 公分`,steps:[`${a} 公尺 = ${a*100} 公分`,`${a*100} + ${b} = ${ans} 公分`]};}
+};
+Object.keys(WORD).forEach(k=>{ if(GEN[k]){ const calc=GEN[k], word=WORD[k]; GEN[k]=(dd)=>pick([calc,word])(dd); } });
 
 /* =========================================================================
    3) 課綱資料
@@ -488,9 +541,14 @@ function gatherQuestions(){
 }
 
 function render(){
-  const qs=gatherQuestions();
+  const variantCount=Math.max(1,Math.min(3,+$('#variantSel').value||1));
+  const variantLabels=['A','B','C'];
+  const papers=Array.from({length:variantCount},(_,i)=>({
+    label:variantCount===1?'':variantLabels[i],
+    qs:gatherQuestions()
+  }));
   const box=$('#output');
-  if(!qs.length){box.innerHTML='<div class="empty">沒有可出的題目：請至少勾一個單元、題數&gt;0；無自動題的單元請開「混入題庫」並先建題。</div>';return;}
+  if(!papers.some(p=>p.qs.length)){box.innerHTML='<div class="empty">沒有可出的題目：請至少勾一個單元、題數&gt;0；無自動題的單元請開「混入題庫」並先建題。</div>';return;}
   const cols=Math.max(1,Math.min(4,+$('#colsInput').value||2));
   const title=$('#titleInput').value||'數學測驗';
   const showSteps=$('#stepsToggle').checked;
@@ -499,15 +557,14 @@ function render(){
   const className=$('#classInput').value.trim();
   const timeLimit=Math.max(0,+$('#timeInput').value||0);
   const points=Math.max(0,+$('#pointsInput').value||0);
-  const totalPoints=qs.length*points;
   const subtitle=`${stage} ${gr}年級 ${sem}學期 ・ ${ver}`;
 
-  // 依單元分段
-  const bySec={};qs.forEach((x,i)=>{(bySec[x.sec]=bySec[x.sec]||[]).push({...x,gi:i+1});});
-
   const field=(label,value)=>`<span>${label}：${value?value:'<span class="fill"></span>'}</span>`;
-  const head=(extra)=>`<div class="paper-head">
-      <div class="title">${title}${extra||''}</div>
+  const head=(qs,label,answerTitle)=>{
+    const totalPoints=qs.length*points;
+    const suffix=label?`（${label}卷${answerTitle?'解答':''}）`:(answerTitle?'（解答）':'');
+    return `<div class="paper-head">
+      <div class="title">${title}${suffix}</div>
       <div class="meta">
         <span>${subtitle}</span>
         ${field('學校',school)}
@@ -517,25 +574,32 @@ function render(){
         ${timeLimit>0?`<span>時間：${timeLimit} 分鐘</span>`:''}
         <span>分數：<span class="fill"></span> / ${totalPoints} 分（共 ${qs.length} 題）</span>
       </div></div>`;
+  };
 
   const stepHTML=it=>showSteps && it.steps && it.steps.length
     ? `<div class="steps">${it.steps.map(s=>`<div>${s}</div>`).join('')}</div>`
     : '';
-  const sectionsHTML=(showAns)=>Object.keys(bySec).map(sec=>{
+  const sectionsHTML=(qs,showAns)=>{
+    // 依單元分段，每份卷獨立編號，答案卷沿用同一份 qs。
+    const bySec={};qs.forEach((x,i)=>{(bySec[x.sec]=bySec[x.sec]||[]).push({...x,gi:i+1});});
+    return Object.keys(bySec).map(sec=>{
     const items=bySec[sec].map(it=>`<div class="q"><span class="no">${it.gi}.</span>
         <span class="body">${it.q} ${showAns?`<b>${it.a}</b>${stepHTML(it)}`:'<span class="ans-line"></span>'}</span></div>`).join('');
     return `<div class="sec-title">${sec}（每題 ${points} 分）</div><div class="qgrid" style="grid-template-columns:repeat(${cols},1fr)">${items}</div>`;
   }).join('');
+  };
+  const paperHTML=(paper,showAns,addPageBreak)=>`<div class="paper${addPageBreak?' pb':''}${showAns?' answers':''}">${head(paper.qs,paper.label,showAns)}${sectionsHTML(paper.qs,showAns)}</div>`;
 
-  let html=`<div class="paper">${head()}${sectionsHTML(false)}</div>`;
+  let html=papers.map((paper,i)=>paperHTML(paper,false,i>0)).join('');
   if($('#ansToggle').checked){
-    html+=`<div class="paper pb answers">${head('（解答）')}${sectionsHTML(true)}</div>`;
+    html+=papers.map(paper=>paperHTML(paper,true,true)).join('');
   }
   box.innerHTML=html;
 }
 const togglePanel=(open)=>{const b=document.body,o=open===undefined?!b.classList.contains('panel-open'):open;b.classList.toggle('panel-open',o);};
 $('#panelToggle').onclick=()=>togglePanel();
 $('#panelBackdrop').onclick=()=>togglePanel(false);
+$('#regenFab').onclick=()=>render();
 $('#genBtn').onclick=()=>{render();if(window.matchMedia('(max-width:820px)').matches)togglePanel(false);};
 $('#printBtn').onclick=()=>{if($('#output .empty'))render();window.print();};
 
