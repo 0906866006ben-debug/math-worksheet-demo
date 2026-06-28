@@ -336,6 +336,124 @@ const WORD={
 };
 Object.keys(WORD).forEach(k=>{ if(GEN[k]){ const calc=GEN[k], word=WORD[k]; GEN[k]=(dd)=>pick([calc,word])(dd); } });
 
+/* ===== 多模板題庫（每主題多種「結構不同」題型；洗牌輪替，同一大題不重複同款） ===== */
+const isP=n=>{if(n<2)return false;for(let i=2;i*i<=n;i++)if(n%i===0)return false;return true;};
+const pf=n=>{let r=[],x=n;for(let p=2;p<=x;p++){while(x%p===0){r.push(p);x/=p;}}return r.join('×');};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]];}return a;};
+const multi=tmpls=>{let bag=[];return d=>{if(!bag.length)bag=shuffle(tmpls.map((_,i)=>i));return tmpls[bag.shift()](d);};};
+const ME=s=>`<span class="mexp">${s}</span>`;
+const TEMPLATES={
+  factors:[
+    d=>{const n=rnd(12,60);const fs=[];for(let i=1;i<=n;i++)if(n%i===0)fs.push(i);return{q:`${n} 的所有因數有哪些？共幾個？`,a:`${fs.join('、')}，共 ${fs.length} 個`,steps:[`能整除 ${n} 的數：${fs.join('、')}`]};},
+    d=>{const cand=shuffle([17,19,23,29,31,37,21,25,27,33,35,39,49,51]).slice(0,4);const pr=cand.filter(isP);return{q:`下列哪些是質數？ ${cand.join('、')}`,a:pr.length?pr.join('、'):'都不是',steps:[`質數只有 1 和自己兩個因數`,`質數：${pr.join('、')||'無'}`]};},
+    d=>{const n=pick([12,18,24,36,48,60,72,30,40,45,54,90]);return{q:`把 ${n} 做質因數分解。`,a:pf(n),steps:[`${n} = ${pf(n)}`]};}
+  ],
+  gcd:[
+    d=>{const g=rnd(3,8),a=g*rnd(2,7),b=g*rnd(2,7),ans=gcd(a,b);return{q:`求 ${a} 和 ${b} 的最大公因數。`,a:''+ans,steps:[`(${a}, ${b}) 的最大公因數 = ${ans}`]};},
+    d=>{const g=rnd(4,9),cd=g*rnd(3,6),ck=g*rnd(2,5),ans=gcd(cd,ck);return{q:`老師有 ${cd} 顆糖果和 ${ck} 塊餅乾，要平分裝成相同的袋子（每袋糖果數相同、餅乾數也相同且不剩），最多裝幾袋？每袋各幾個？`,a:`${ans} 袋（糖果 ${cd/ans} 顆、餅乾 ${ck/ans} 塊）`,steps:[`最多袋數 = (${cd}, ${ck}) 的最大公因數 = ${ans}`,`每袋糖果 ${cd/ans}、餅乾 ${ck/ans}`]};},
+    d=>{const g=rnd(4,12),W=g*rnd(2,5),H=g*rnd(2,4),ans=gcd(W,H);return{q:`一張 ${W} 公分 × ${H} 公分的長方形色紙，要剪成大小相同的正方形且不剩，正方形邊長最大幾公分？可剪幾張？`,a:`邊長 ${ans} 公分，共 ${(W/ans)*(H/ans)} 張`,steps:[`邊長 = (${W}, ${H}) 最大公因數 = ${ans}`,`張數 = ${(W/ans)*(H/ans)}`]};}
+  ],
+  lcm:[
+    d=>{const a=rnd(3,9),b=rnd(3,9),ans=lcm(a,b);return{q:`求 ${a} 和 ${b} 的最小公倍數。`,a:''+ans,steps:[`[${a}, ${b}] 的最小公倍數 = ${ans}`]};},
+    d=>{const a=pick([6,8,9,10,12,15]),b=pick([6,8,9,10,12,15]),ans=lcm(a,b);return{q:`甲公車每 ${a} 分鐘一班、乙公車每 ${b} 分鐘一班，剛才同時發車，再過幾分鐘會再次同時發車？`,a:`${ans} 分鐘`,steps:[`= [${a}, ${b}] 最小公倍數 = ${ans} 分鐘`]};},
+    d=>{const a=rnd(2,8),b=rnd(2,8),ans=lcm(a,b);return{q:`紅燈每 ${a} 秒、綠燈每 ${b} 秒各閃一次，這次同時閃後再過幾秒會再同時閃？`,a:`${ans} 秒`,steps:[`= [${a}, ${b}] 最小公倍數 = ${ans} 秒`]};}
+  ],
+  intMixed:[
+    d=>{const a=rnd(10,40),b=rnd(2,9),e=rnd(2,9),c=rnd(5,40),ans=(a+b)*e-c;return{q:ME(`(${a} + ${b}) × ${e} − ${c} =`),a:''+ans,steps:[`(${a}+${b})=${a+b}`,`×${e}=${(a+b)*e}`,`−${c}=${ans}`]};},
+    d=>{const p1=rnd(8,30),q1=rnd(2,6),p2=rnd(8,30),q2=rnd(2,6),ans=p1*q1+p2*q2;return{q:`買 ${q1} 本 ${p1} 元的筆記本和 ${q2} 枝 ${p2} 元的筆，一共多少元？`,a:`${ans} 元`,steps:[`${p1}×${q1}=${p1*q1}`,`${p2}×${q2}=${p2*q2}`,`合計 ${ans} 元`]};},
+    d=>{const price=rnd(15,40),qty=rnd(2,5),other=rnd(20,60),change=rnd(5,80),money=price*qty+other+change;return{q:`${_nm()}帶了 ${money} 元，買 ${qty} 個 ${price} 元的麵包和一瓶 ${other} 元的牛奶，找回多少元？`,a:`${change} 元`,steps:[`花費 ${price}×${qty}+${other}=${price*qty+other}`,`找回 ${money}−${price*qty+other}=${change}`]};},
+    d=>{const a=rnd(3,9),b=rnd(20,50),c=rnd(2,18),f=rnd(5,40),ans=a*(b-c)+f;return{q:ME(`${a} × (${b} − ${c}) + ${f} =`),a:''+ans,steps:[`(${b}−${c})=${b-c}`,`×${a}=${a*(b-c)}`,`+${f}=${ans}`]};}
+  ],
+  fracAddSub:[
+    d=>{let p1=_pf(8),p2=_pf(8),n1=p1[0],dd1=p1[1],n2=p2[0],dd2=p2[1];const L=lcm(dd1,dd2);let a1=n1*(L/dd1),a2=n2*(L/dd2);const op=pick(['+','−']);if(op==='−'&&a1<a2){let t;t=n1;n1=n2;n2=t;t=dd1;dd1=dd2;dd2=t;t=a1;a1=a2;a2=t;}const num=op==='+'?a1+a2:a1-a2;return{q:ME(`${fracHTML(n1,dd1)} ${op} ${fracHTML(n2,dd2)} =`),a:fracStr(num,L),steps:[`通分，公分母 ${L}`,`${fracHTML(a1,L)} ${op} ${fracHTML(a2,L)} = ${fracStr(num,L)}`]};},
+    d=>{const L=12;const ds=shuffle([2,3,4,6]).slice(0,3),ns=ds.map(x=>rnd(1,x-1));const sum=ns.reduce((s,n,i)=>s+n*(L/ds[i]),0);return{q:ME(ns.map((n,i)=>fracHTML(n,ds[i])).join(' + ')+' ='),a:fracStr(sum,L),steps:[`通分至 ${L} 後相加`,`= ${fracStr(sum,L)}`]};},
+    d=>{const dd=pick([3,4,5,6,8]),W=rnd(2,5),w2=rnd(1,W-1),n1=rnd(1,dd-2),n2=rnd(n1+1,dd-1),num=(W*dd+n1)-(w2*dd+n2);return{q:ME(`${W}${F(n1,dd)} − ${w2}${F(n2,dd)} =`),a:fracStr(num,dd),steps:[`分數不夠減需借位`,`= ${fracStr(num,dd)}`]};},
+    d=>{let p1=_pf(8),p2=_pf(8),n1=p1[0],d1=p1[1],n2=p2[0],d2=p2[1];const L=lcm(d1,d2);let a1=n1*(L/d1),a2=n2*(L/d2);if(a1<a2){let t;t=a1;a1=a2;a2=t;t=n1;n1=n2;n2=t;t=d1;d1=d2;d2=t;}const diff=a1-a2;return{q:ME(`${fracHTML(n1,d1)} − □ = ${fracHTML(a2,L)}`),a:`□ = ${fracStr(diff,L)}`,steps:[`□ = ${fracHTML(n1,d1)} − ${fracHTML(a2,L)} = ${fracStr(diff,L)}`]};},
+    d=>{const dd=12,total=rnd(13,23),u1=rnd(2,total-3),u2=rnd(2,total-u1-1),rem=total-u1-u2;return{q:`一瓶果汁有 ${fracHTML(total,dd)} 公升，早上喝 ${fracHTML(u1,dd)} 公升、下午喝 ${fracHTML(u2,dd)} 公升，還剩多少公升？`,a:`${fracStr(rem,dd)} 公升`,steps:[`${fracHTML(total,dd)} − ${fracHTML(u1,dd)} − ${fracHTML(u2,dd)} = ${fracStr(rem,dd)}`]};}
+  ],
+  fracMul:[
+    d=>{let p1=_pf(7),p2=_pf(7);return{q:ME(`${fracHTML(p1[0],p1[1])} × ${fracHTML(p2[0],p2[1])} =`),a:fracStr(p1[0]*p2[0],p1[1]*p2[1]),steps:[`分子×分子、分母×分母`,`= ${fracStr(p1[0]*p2[0],p1[1]*p2[1])}`]};},
+    d=>{let p1=_pf(6),p2=_pf(6);return{q:`一塊蛋糕的 ${fracHTML(p1[0],p1[1])} 是草莓口味，${_nm()}吃了草莓部分的 ${fracHTML(p2[0],p2[1])}，他吃了整塊的幾分之幾？`,a:fracStr(p1[0]*p2[0],p1[1]*p2[1]),steps:[`${fracHTML(p1[0],p1[1])} × ${fracHTML(p2[0],p2[1])} = ${fracStr(p1[0]*p2[0],p1[1]*p2[1])}`]};},
+    d=>{let pp=_pf(6),n=pp[0],dd=pp[1],base=rnd(2,9),whole=base*dd,ans=base*n;return{q:`面積 ${whole} 平方公尺的菜園，其中 ${fracHTML(n,dd)} 種青菜，青菜佔幾平方公尺？`,a:`${ans} 平方公尺`,steps:[`${whole} × ${fracHTML(n,dd)} = ${ans}`]};}
+  ],
+  fracDiv:[
+    d=>{let p1=_pf(6),p2=_pf(6);return{q:ME(`${fracHTML(p1[0],p1[1])} ÷ ${fracHTML(p2[0],p2[1])} =`),a:fracStr(p1[0]*p2[1],p1[1]*p2[0]),steps:[`除以分數 = 乘以倒數`,`= ${fracStr(p1[0]*p2[1],p1[1]*p2[0])}`]};},
+    d=>{const dd=rnd(3,6),whole=rnd(2,6);return{q:`有 ${whole} 公升果汁，每杯裝 ${fracHTML(1,dd)} 公升，可裝幾杯？`,a:`${whole*dd} 杯`,steps:[`${whole} ÷ ${fracHTML(1,dd)} = ${whole}×${dd} = ${whole*dd}`]};},
+    d=>{const dd=rnd(3,8),n=rnd(2,dd-1),k=rnd(2,5);return{q:`${fracHTML(n,dd)} 公尺的緞帶平均剪成 ${k} 段，每段幾公尺？`,a:`${fracStr(n,dd*k)} 公尺`,steps:[`${fracHTML(n,dd)} ÷ ${k} = ${fracStr(n,dd*k)}`]};},
+    d=>{const dd=pick([3,4,5,6]),used=rnd(1,dd-1),left=dd-used,per=rnd(3,8),rest=left*per,total=dd*per;return{q:`一桶水用掉 ${fracHTML(used,dd)} 後還剩 ${rest} 公升，這桶水原有幾公升？`,a:`${total} 公升`,steps:[`剩下 ${fracHTML(left,dd)} 對應 ${rest} 公升`,`原有 = ${rest} ÷ ${fracHTML(left,dd)} = ${total} 公升`]};},
+    d=>{const a=pick([4,6,8,12]),b=pick([4,6,8,12]);if(a===b)return TEMPLATES.fracDiv[1](d);const L=lcm(a,b),s=L/a+L/b;return{q:`一件工程，甲一天做 ${fracHTML(1,a)}、乙一天做 ${fracHTML(1,b)}，兩人合作幾天完成？`,a:`${fracStr(L,s)} 天`,steps:[`每天合作 ${fracHTML(1,a)}+${fracHTML(1,b)} = ${fracStr(s,L)}`,`時間 = 1 ÷ ${fracStr(s,L)} = ${fracStr(L,s)} 天`]};}
+  ],
+  decMul:[
+    d=>{const a=(rnd(11,49)/10).toFixed(1),b=(rnd(11,39)/10).toFixed(1),ans=+(a*b).toFixed(2);return{q:ME(`${a} × ${b} =`),a:''+ans,steps:[`${a.replace('.','')}×${b.replace('.','')}=${(+a*10)*(+b*10)}`,`點回 2 位小數 = ${ans}`]};},
+    d=>{const a=(rnd(20,60)/10).toFixed(1),b=(rnd(15,40)/10).toFixed(1),ans=+(a*b).toFixed(2);return{q:`長 ${a} 公尺、寬 ${b} 公尺的草坪，面積幾平方公尺？`,a:`${ans} 平方公尺`,steps:[`${a} × ${b} = ${ans}`]};},
+    d=>{const price=(rnd(15,60)/10).toFixed(1),kg=rnd(2,6),ans=+(price*kg).toFixed(2);return{q:`每公斤 ${price} 元的蘋果買 ${kg} 公斤，要付多少元？`,a:`${ans} 元`,steps:[`${price} × ${kg} = ${ans}`]};}
+  ],
+  decDiv:[
+    d=>{const n=rnd(2,9),each=(rnd(11,40)/10).toFixed(1),total=+(each*n).toFixed(1);return{q:ME(`${total} ÷ ${n} =`),a:''+(+each),steps:[`${total} ÷ ${n} = ${+each}`]};},
+    d=>{const seg=pick([0.2,0.4,0.5,0.8,1.2,1.5,2.5]),cnt=rnd(6,20),total=+(seg*cnt).toFixed(1);return{q:`一條 ${total} 公尺的繩子，每段剪 ${seg} 公尺，可剪幾段？`,a:`${cnt} 段`,steps:[`${total} ÷ ${seg} = ${cnt}`]};},
+    d=>{const n=rnd(3,8),each=(rnd(8,25)/10).toFixed(1),total=+(each*n).toFixed(1);return{q:`${total} 公斤的米平均裝 ${n} 袋，每袋幾公斤？`,a:`${+each} 公斤`,steps:[`${total} ÷ ${n} = ${+each}`]};}
+  ],
+  percent:[
+    d=>{const price=rnd(2,30)*50,z=rnd(5,9),ans=price*z/10,zc=['','一','二','三','四','五','六','七','八','九'][z];return{q:`原價 ${price} 元的書打 ${zc}折，售價多少元？`,a:`${ans} 元`,steps:[`打${zc}折 = ${z*10}%`,`${price}×${z*10}% = ${ans}`]};},
+    d=>{const total=pick([20,25,40,50]),p=pick([60,70,75,80]),pass=total*p/100;return{q:`全班 ${total} 人，及格率 ${p}%，及格幾人？`,a:`${pass} 人`,steps:[`${total} × ${p}% = ${pass} 人`]};},
+    d=>{const total=pick([20,25,40,50]),pass=pick([10,12,14,15,28,30]),tgt=80;const need=total*tgt/100-pass;if(need<=0||!Number.isInteger(need))return TEMPLATES.percent[1](d);return{q:`全班 ${total} 人，已有 ${pass} 人及格，要讓及格率達 ${tgt}%，至少還要幾人及格？`,a:`${need} 人`,steps:[`${tgt}% 需 ${total*tgt/100} 人`,`還差 ${total*tgt/100}−${pass} = ${need} 人`]};},
+    d=>{const x=pick([[30,270,10],[20,180,10],[40,160,20],[50,150,25],[25,225,10],[60,140,30]]);return{q:`把 ${x[0]} 克食鹽溶入 ${x[1]} 克水中，食鹽水濃度是多少？`,a:`${x[2]}%`,steps:[`濃度 = ${x[0]} ÷ ${x[0]+x[1]} = ${x[2]}%`]};},
+    d=>{const whole=rnd(2,20)*10,p=pick([5,10,15,20,25,30,40,50,75]),ans=whole*p/100;return{q:`${whole} 的 ${p}% 是多少？`,a:''+ans,steps:[`${whole} × ${p}% = ${ans}`]};}
+  ],
+  ratio:[
+    d=>{const g=rnd(2,9),a=rnd(1,6),b=rnd(1,6);if(a===b)return TEMPLATES.ratio[1](d);const gg=gcd(a,b);return{q:`把 ${a*g} : ${b*g} 化成最簡單整數比。`,a:`${a/gg} : ${b/gg}`,steps:[`兩邊同除以 ${g*gg} = ${a/gg} : ${b/gg}`]};},
+    d=>{const r1=rnd(2,5),r2=rnd(2,5),unit=rnd(20,60),total=(r1+r2)*unit;return{q:`${_nm()}和${_nm()}按 ${r1} : ${r2} 分配 ${total} 元，兩人各得多少元？`,a:`${r1*unit} 元、${r2*unit} 元`,steps:[`每份 = ${total} ÷ ${r1+r2} = ${unit} 元`,`${r1*unit}、${r2*unit}`]};},
+    d=>{const scale=pick([10000,50000,25000,100000]),cm=pick([4,5,6,8]),km=cm*scale/100000;return{q:`地圖比例尺 1：${scale}，圖上兩地距離 ${cm} 公分，實際幾公里？`,a:`${+km.toFixed(2)} 公里`,steps:[`${cm} × ${scale} = ${cm*scale} 公分 = ${+km.toFixed(2)} 公里`]};},
+    d=>{const k=rnd(2,5),a=rnd(1,6),b=rnd(1,6),g=gcd(a,b);return{q:`班上男生 ${a*k} 人、女生 ${b*k} 人，男女最簡單整數比 =`,a:`${a/g} : ${b/g}`,steps:[`= ${a/g} : ${b/g}`]};}
+  ],
+  area:[
+    d=>{const t=pick(['平行四邊形','三角形','梯形']);if(t==='三角形'){const b=rnd(4,20),h=rnd(4,20);return{q:`底 ${b} 公分、高 ${h} 公分的三角形面積 =`,a:`${b*h/2} 平方公分`,steps:[`底×高÷2 = ${b}×${h}÷2 = ${b*h/2}`]};}if(t==='梯形'){const u=rnd(3,12),lo=rnd(u+2,18),h=rnd(4,16);return{q:`上底 ${u}、下底 ${lo}、高 ${h}（公分）的梯形面積 =`,a:`${(u+lo)*h/2} 平方公分`,steps:[`(上底+下底)×高÷2 = (${u}+${lo})×${h}÷2 = ${(u+lo)*h/2}`]};}const b=rnd(4,20),h=rnd(4,20);return{q:`底 ${b} 公分、高 ${h} 公分的平行四邊形面積 =`,a:`${b*h} 平方公分`,steps:[`底×高 = ${b}×${h} = ${b*h}`]};},
+    d=>{const s=rnd(5,20),P=s*4;return{q:`一個正方形周長 ${P} 公分，面積是多少平方公分？`,a:`${s*s} 平方公分`,steps:[`邊長 = ${P}÷4 = ${s}`,`面積 = ${s}×${s} = ${s*s}`]};},
+    d=>{const a=rnd(6,14),b=rnd(3,8),c=rnd(3,7),e=rnd(2,6);return{q:`一個 L 形可分成兩個長方形 ${a}×${b} 和 ${c}×${e}（公分），總面積是多少？`,a:`${a*b+c*e} 平方公分`,steps:[`${a}×${b}=${a*b}`,`${c}×${e}=${c*e}`,`合計 ${a*b+c*e}`]};},
+    d=>{const L=rnd(12,25),W=rnd(8,18),s=rnd(3,Math.min(L,W)-2);return{q:`長 ${L} 公分、寬 ${W} 公分的長方形，中間挖去邊長 ${s} 公分的正方形，剩下面積是多少？`,a:`${L*W-s*s} 平方公分`,steps:[`${L}×${W}−${s}×${s} = ${L*W-s*s}`]};}
+  ],
+  cuboid:[
+    d=>{const l=rnd(3,15),w=rnd(3,12),h=rnd(3,12);return{q:`長 ${l}、寬 ${w}、高 ${h}（公分）的長方體體積 =`,a:`${l*w*h} 立方公分`,steps:[`長×寬×高 = ${l}×${w}×${h} = ${l*w*h}`]};},
+    d=>{const l=rnd(3,15),w=rnd(3,12),h=rnd(3,12);return{q:`長 ${l}、寬 ${w}、高 ${h}（公分）的長方體表面積 =`,a:`${2*(l*w+l*h+w*h)} 平方公分`,steps:[`2×(${l*w}+${l*h}+${w*h}) = ${2*(l*w+l*h+w*h)}`]};},
+    d=>{const l=pick([10,20,30,40]),w=pick([10,20,30]),h=pick([10,15,20,25]),v=l*w*h;return{q:`一個長 ${l}、寬 ${w}、高 ${h}（公分）的水箱，最多裝幾公升的水？（1000 立方公分=1 公升）`,a:`${v/1000} 公升`,steps:[`容積 = ${v} 立方公分 = ${v/1000} 公升`]};},
+    d=>{const l=rnd(10,25),w=rnd(8,18),h=rnd(6,15);return{q:`一個沒有蓋子的長方體紙盒，長 ${l}、寬 ${w}、高 ${h}（公分），做這盒子至少要多少平方公分的紙？`,a:`${l*w+2*l*h+2*w*h} 平方公分`,steps:[`底 ${l*w} + 側面 ${2*l*h}+${2*w*h} = ${l*w+2*l*h+2*w*h}`]};}
+  ],
+  circleP:[
+    d=>{const r=rnd(2,15);return{q:`半徑 ${r} 公分的圓，周長是多少公分？（π=3.14）`,a:`${+(2*r*3.14).toFixed(2)} 公分`,steps:[`2×${r}×3.14 = ${+(2*r*3.14).toFixed(2)}`]};},
+    d=>{const dd=rnd(4,30);return{q:`直徑 ${dd} 公分的圓，周長是多少公分？（π=3.14）`,a:`${+(dd*3.14).toFixed(2)} 公分`,steps:[`${dd}×3.14 = ${+(dd*3.14).toFixed(2)}`]};},
+    d=>{const r=rnd(2,15);return{q:`半徑 ${r} 公分的車輪滾一圈前進多少公分？（π=3.14）`,a:`${+(2*r*3.14).toFixed(2)} 公分`,steps:[`周長 = 2×${r}×3.14 = ${+(2*r*3.14).toFixed(2)}`]};}
+  ],
+  circleA:[
+    d=>{const r=rnd(2,15);return{q:`半徑 ${r} 公分的圓，面積是多少平方公分？（π=3.14）`,a:`${+(r*r*3.14).toFixed(2)} 平方公分`,steps:[`${r}×${r}×3.14 = ${+(r*r*3.14).toFixed(2)}`]};},
+    d=>{const r=pick([4,6,8,10,12]),ang=pick([90,180,270]),ans=+(r*r*3.14*ang/360).toFixed(2);return{q:`半徑 ${r} 公分、圓心角 ${ang}° 的扇形面積是多少？（π=3.14）`,a:`${ans} 平方公分`,steps:[`${r}×${r}×3.14×${ang}/360 = ${ans}`]};},
+    d=>{const s=pick([6,8,10,12,14]),r=s/2,ans=+(s*s-r*r*3.14).toFixed(2);return{q:`邊長 ${s} 公分的正方形內切一個圓，正方形減去圓的陰影面積是多少？（π=3.14）`,a:`${ans} 平方公分`,steps:[`${s}×${s} − ${r}×${r}×3.14 = ${ans}`]};}
+  ],
+  speed:[
+    d=>{const v=rnd(3,12)*10,t=rnd(2,6);return{q:`時速 ${v} 公里行駛 ${t} 小時，共幾公里？`,a:`${v*t} 公里`,steps:[`${v}×${t} = ${v*t}`]};},
+    d=>{const v=rnd(4,15),t=rnd(2,6),dist=v*t;return{q:`${_nm()}騎車 ${dist} 公里花了 ${t} 小時，平均時速幾公里？`,a:`${v} 公里`,steps:[`${dist}÷${t} = ${v}`]};},
+    d=>{const va=rnd(15,30),vb=rnd(15,30),t=rnd(2,5),dist=(va+vb)*t;return{q:`甲、乙兩地相距 ${dist} 公里，兩人同時相向而行，甲時速 ${va}、乙時速 ${vb} 公里，幾小時後相遇？`,a:`${t} 小時`,steps:[`每小時接近 ${va}+${vb}=${va+vb}`,`${dist}÷${va+vb} = ${t}`]};},
+    d=>{const dist=120,go=pick([60,40,30,20]),back=pick([60,40,30,20]);if(go===back)return TEMPLATES.speed[0](d);const avg=+(2*dist/(dist/go+dist/back)).toFixed(2);return{q:`去程時速 ${go} 公里、回程時速 ${back} 公里（同一段路），全程平均時速多少公里？`,a:`${avg} 公里`,steps:[`平均 = 總距離÷總時間 = ${2*dist}÷(${dist/go}+${dist/back}) = ${avg}`]};}
+  ],
+  equation:[
+    d=>{const x=rnd(2,15),a=rnd(2,9),b=rnd(2,20);return{q:ME(`${a} × □ + ${b} = ${a*x+b}，□ =`),a:''+x,steps:[`${a}×□ = ${a*x+b}−${b} = ${a*x}`,`□ = ${x}`]};},
+    d=>{const big=rnd(20,60),small=rnd(5,big-2),sum=big+small,diff=big-small;return{q:`兩個數的和是 ${sum}、差是 ${diff}，較大的數是多少？`,a:''+big,steps:[`大數 = (和+差)÷2 = (${sum}+${diff})÷2 = ${big}`]};},
+    d=>{const ch=rnd(5,20),ra=rnd(5,20),head=ch+ra,feet=ch*2+ra*4;return{q:`雞和兔共 ${head} 隻、共 ${feet} 隻腳，雞有幾隻？`,a:`${ch} 隻`,steps:[`假設全是雞 ${head}×2=${head*2} 腳`,`多 ${feet-head*2} 腳÷2 = 兔 ${ra} 隻`,`雞 = ${head}−${ra} = ${ch} 隻`]};},
+    d=>{const son=rnd(6,14),k=pick([2,3]),x=rnd(3,15),dad=k*son+(k-1)*x;return{q:`今年爸爸 ${dad} 歲、兒子 ${son} 歲，幾年後爸爸是兒子的 ${k} 倍？`,a:`${x} 年後`,steps:[`${dad}+x = ${k}×(${son}+x)`,`x = ${x}`]};},
+    d=>{const gap=pick([4,5,10]),len=gap*rnd(5,12),side=pick([1,2]),perSide=len/gap+1,total=perSide*side;return{q:`一條 ${len} 公尺的路，${side===2?'兩側':'單側'}每隔 ${gap} 公尺種一棵樹（兩端都種），共種幾棵？`,a:`${total} 棵`,steps:[`單側 = ${len}÷${gap}+1 = ${perSide} 棵`,`共 ${total} 棵`]};}
+  ],
+  time:[
+    d=>{const h=rnd(1,9),m=pick([0,5,10,15,20,30,40,45,50]),len=rnd(40,150),end=h*60+m+len;return{q:`一場活動 ${h} 時 ${m} 分開始，歷時 ${len} 分鐘，幾時幾分結束？`,a:`${Math.floor(end/60)%24} 時 ${end%60} 分`,steps:[`${h}時${m}分 + ${len} 分 = ${Math.floor(end/60)%24} 時 ${end%60} 分`]};},
+    d=>{const h1=rnd(1,8),m1=pick([0,10,15,20,25]),h2=h1+rnd(1,4),m2=pick([30,40,45,50,55]),diff=(h2*60+m2)-(h1*60+m1);return{q:`${_nm()} ${h1} 時 ${m1} 分出門，${h2} 時 ${m2} 分到達，共花多少時間？`,a:`${Math.floor(diff/60)} 小時 ${diff%60} 分`,steps:[`${h2}:${m2} − ${h1}:${m1} = ${Math.floor(diff/60)} 小時 ${diff%60} 分`]};},
+    d=>{const h=rnd(20,23),m=pick([20,30,40,45]),len=rnd(60,200),total=h*60+m+len,eh=Math.floor(total/60)%24,em=total%60;return{q:`電影 ${h} 時 ${m} 分開始，片長 ${len} 分鐘，幾時幾分結束（24 小時制）？`,a:`${eh} 時 ${em} 分${total>=1440?'（次日）':''}`,steps:[`${h}時${m}分 + ${len} 分 = ${eh} 時 ${em} 分`]};}
+  ],
+  unit:[
+    d=>{const km=rnd(2,9),m=rnd(1,9)*100,ans=km*1000+m;return{q:`${km} 公里 ${m} 公尺 = ____ 公尺`,a:`${ans}`,steps:[`${km}×1000+${m} = ${ans}`]};},
+    d=>{const a=rnd(1,2),b=rnd(10,99),ans=a*100+b;return{q:`${_nm()}身高 ${a} 公尺 ${b} 公分 = ____ 公分`,a:`${ans}`,steps:[`${a*100}+${b} = ${ans}`]};},
+    d=>{const kg=rnd(2,8),g=rnd(1,9)*100,ans=kg*1000+g;return{q:`${kg} 公斤 ${g} 公克 = ____ 公克`,a:`${ans}`,steps:[`${kg}×1000+${g} = ${ans}`]};}
+  ]
+};
+Object.keys(TEMPLATES).forEach(k=>{ GEN[k]=multi(TEMPLATES[k]); });
+
 /* =========================================================================
    3) 課綱資料
       國小：學制 -> 版本 -> 年級 -> 學期 -> 單元[{id,name,gen}]
